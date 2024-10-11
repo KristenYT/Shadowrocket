@@ -20,18 +20,24 @@ const STATUS_TIMEOUT = -1
 // 檢測異常
 const STATUS_ERROR = -2
 
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36'
+const REQUEST_HEADERS = { 
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
+    'Accept-Language': 'en',
+};
+
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36';
+const ipApiUrl = "http://ip-api.com/json"; // IP获取API
 
 let args = getArgs();
 
-;(async () => {
+(async () => {
     let now = new Date();
     let hour = now.getHours();
     let minutes = now.getMinutes();
     hour = hour > 9 ? hour : "0" + hour;
     minutes = minutes > 9 ? minutes : "0" + minutes;
 
-    // 根據傳入的參數設置面板標題和圖標
+    // Initialize the panel with the current time
     let panel_result = {
         title: `${args.title} | ${hour}:${minutes}` || `解鎖檢測 | ${hour}:${minutes}`,
         content: '',
@@ -39,58 +45,73 @@ let args = getArgs();
         'icon-color': args.color || '#FF2D55',
     };
 
+    // Fetch IP information and add it to the panel
+    try {
+        const ipData = await fetchData(ipApiUrl);
+        const ipInfo = JSON.parse(ipData);
+        const ipAddress = `IP: ${ipInfo.query} | Location: ${ipInfo.city}, ${ipInfo.country}`;
+        panel_result.content = `${ipAddress}\n`; // Add IP to the first line of the panel content
 
-    // 同時檢測多個服務
-let [{ region, status }] = await Promise.all([testDisneyPlus()])
+        // Send notification about IP
+        $notification.post("IP 信息", "", `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}`);
+    } catch (error) {
+        panel_result.content = "IP: N/A\n"; // Handle errors if IP can't be fetched
+        $notification.post("IP 信息获取失败", "", `错误: ${error}`);
+    }
+
+    // Simultaneously check multiple services
+    let [{ region, status }] = await Promise.all([testDisneyPlus()]);
     await Promise.all([check_chatgpt(), check_youtube_premium(), check_netflix()])
         .then((result) => {
-            let disney_result = ''
-            if (status == STATUS_COMING) {
-                disney_result = 'Disney\u2009➟ \u2009≈ ' + region
-            } else if (status == STATUS_AVAILABLE){
-                disney_result = 'Disney\u2009➟ \u2611\u2009' + region
-            } else if (status == STATUS_NOT_AVAILABLE) {
-                disney_result = 'Disney\u2009➟ \u2612'
-            } else if (status == STATUS_TIMEOUT) {
-                disney_result = 'Disney\u2009➟ N/A'
-            } else {
-                disney_result = 'Disney\u2009➟ N/A';
-            }
+            let disney_result = getServiceStatus(status, region, "Disney");
+            result.push(disney_result);
 
-            result.push(disney_result)
+            let youtube_netflix = [result[1], result[2]].join(' |  ');
+            let chatgpt_disney = [result[0], result[3]].join(' |  ');
 
-            // 將結果整合成面板內容
-            let youtube_netflix = [result[1], result[2]].join('\t| ')
-            let chatgpt_disney = [result[0], result[3]].join('\t| ')
-
-            // 添加IP信息到面板內容
-            let ipInfo = await check_ip();
-            let ipText = `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}`;
-            panel_result['content'] = ipText + '\n\n' + youtube_netflix + '\n' + chatgpt_disney
+            // Update panel content
+            panel_result.content += youtube_netflix + '\n' + chatgpt_disney;
         })
         .finally(() => {
-            $done(panel_result)
-        })
+            $done(panel_result); // Display the final panel result
+        });
 })();
 
-// ...
-
-async function check_ip() {
-    let ipData = await fetchData('http://ip-api.com/json');
-    const ipInfo = JSON.parse(ipData);
-    $notification.post("IP 信息", "", `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}`);
-    console.log("获取的 IP 信息:\n" + JSON.stringify(ipInfo, null, 2));
-    return ipInfo;
+// Helper function to process the unlock status for each service
+function getServiceStatus(status, region, serviceName) {
+    if (status == STATUS_COMING) {
+        return `${serviceName} ➟ ≈ ${region}`;
+    } else if (status == STATUS_AVAILABLE) {
+        return `${serviceName} ➟ ✔ ${region}`;
+    } else if (status == STATUS_NOT_AVAILABLE) {
+        return `${serviceName} ➟ ✘`;
+    } else if (status == STATUS_TIMEOUT) {
+        return `${serviceName} ➟ N/A`;
+    } else {
+        return `${serviceName} ➟ N/A`;
+    }
 }
 
+// Fetch data from a given URL
+function fetchData(url) {
+    return new Promise((resolve, reject) => {
+        $httpClient.get({ url, headers: REQUEST_HEADERS }, (error, response, data) => {
+            if (error || response.status !== 200) {
+                reject(error || '请求失败');
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
 
-// 參數處理函數
+// ... [Keep your existing service check functions for ChatGPT, YouTube, Netflix, Disney+ here]
+
 function getArgs() {
     return Object.fromEntries(
         $argument.split("&").map(item => item.split("=")).map(([k, v]) => [k, decodeURIComponent(v)])
     );
 }
-
 
 
 // 檢測 ChatGPT
