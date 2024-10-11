@@ -24,16 +24,16 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 
 let args = getArgs();
 
-const ipApiUrl = "https://ipinfo.io/json"; // Fetch IP information
+const ipApiUrl = "https://ipinfo.io/json"; // IP信息获取
 
-;(async () => {
+(async () => {
     let now = new Date();
     let hour = now.getHours();
     let minutes = now.getMinutes();
     hour = hour > 9 ? hour : "0" + hour;
     minutes = minutes > 9 ? minutes : "0" + minutes;
 
-    // 根據傳入的參數設置面板標題和圖標
+    // 根据传入的参数设置面板标题和图标
     let panel_result = {
         title: `${args.title} | ${hour}:${minutes}` || `解锁检测 | ${hour}:${minutes}`,
         content: '',
@@ -41,18 +41,46 @@ const ipApiUrl = "https://ipinfo.io/json"; // Fetch IP information
         'icon-color': args.color || '#FF2D55',
     };
 
-    // 同時檢測IP、Disney+等多個服務
-    let [ipData, { region, status }] = await Promise.all([
-        fetchData(ipApiUrl),   // Fetch IP data
-        testDisneyPlus()
-    ]);
-    
- 
-    let ipInfo = JSON.parse(ipData);
-    let ipContent = `IP: ${ipInfo.ip}   📍: ${ipInfo.city}, ${ipInfo.country}`;
+    try {
+        // 同时检测 IP 和 Disney+
+        let [ipData, disneyResult] = await Promise.all([
+            fetchData(ipApiUrl),   // IP 信息获取
+            testDisneyPlus()       // Disney+ 解锁状态检测
+        ]);
 
+        // 处理 IP 信息
+        let ipInfo = JSON.parse(ipData);
+        let ipContent = `IP: ${ipInfo.ip}   📍: ${ipInfo.city}, ${ipInfo.country}`;
 
+        // 检测 Netflix、YouTube Premium 和 ChatGPT
+        let [netflixResult, youtubeResult, chatgptResult] = await Promise.all([
+            check_netflix(),
+            check_youtube_premium(),
+            check_chatgpt()
+        ]);
 
+        // 处理 Disney+ 结果
+        let disneyResultText = formatDisneyPlusResult(disneyResult.status, disneyResult.region);
+
+        // 将结果整合为面板内容
+        panel_result['content'] = `${ipContent}\n${youtubeResult} \t| ${netflixResult}\nChatGPT ➟ ${chatgptResult} \t| Disney ➟ ${disneyResultText}`;
+
+        // 推送通知结果
+        $notification.post(
+            `网络、流媒体检测 ${hour}:${minutes}`,  // 标题
+            "",  // 副标题
+            panel_result['content']  // 通知内容
+        );
+
+        $done(panel_result);
+    } catch (error) {
+        // 出现错误时推送通知
+        $notification.post("解锁检测失败", "", error.toString());
+        $done(panel_result);
+    }
+})();
+
+// 其他函数保持不变，例如 check_netflix、check_youtube_premium、testDisneyPlus 等...
 // Functions for testing services like Netflix, YouTube, and Disney+ remain the same...
     
     // 同時檢測多個服務
@@ -72,18 +100,8 @@ const ipApiUrl = "https://ipinfo.io/json"; // Fetch IP information
             disney_result = 'Disney\u2009➟ N/A';
         }
         result.push(disney_result)
+    }
 
-        // 將結果整合成面板內容
-        let youtube_netflix = [result[1], result[2]].join('\t|  ')
-        let chatgpt_disney = [result[0], result[3]].join('\t|  ')
-        
-        // 更新面板內容
-        panel_result['content'] = ipContent + '\n' + youtube_netflix + '\n' + chatgpt_disney
-    })
-    .finally(() => {
-        $done(panel_result)
-    })
-})()
 
 
 // 參數處理函數
