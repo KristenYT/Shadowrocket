@@ -152,7 +152,7 @@ async function check_chatgpt() {
       }
     })
     .catch((error) => {
-      check_result += 'N/A   '
+      check_result += 'N/A    \u2009'
     })
 
   return check_result
@@ -203,7 +203,7 @@ async function check_youtube_premium() {
         }
     })
         .catch((error) => {
-        youtube_check_result += '\u2009N/A '
+        youtube_check_result += '\u2009N/A   '
     })
 
     return youtube_check_result
