@@ -42,7 +42,7 @@ let args = getArgs();
         const ipInfo = JSON.parse(ipData);
         const ipAddress = `IP: ${ipInfo.ip}  📍: ${ipInfo.city}, ${ipInfo.country}`;
         panel_result.content = `${ipAddress}\n`; // Add IP to the first line of the panel content
-        notificationContent += `IP: ${ipInfo.ip} | Location: ${ipInfo.city}, ${ipInfo.country}\n`; // Add IP info to notification content
+        notificationContent += `IP: ${ipInfo.ip}  📍: ${ipInfo.city}, ${ipInfo.country}\n`; // Add IP info to notification content
     } catch (error) {
         panel_result.content = "IP: N/A\n"; // Handle errors if IP can't be fetched
         notificationContent += "IP: N/A\n";
@@ -62,8 +62,8 @@ let args = getArgs();
             panel_result.content += youtube_netflix + '\n' + chatgpt_disney;
 
             // Add unlock results to the notification content
-            notificationContent += `YouTube & Netflix: ${youtube_netflix}\n`;
-            notificationContent += `ChatGPT & Disney: ${chatgpt_disney}`;
+            notificationContent += `${youtube_netflix}\n`;
+            notificationContent += `${chatgpt_disney}`;
         })
         .finally(() => {
             // Push notification with all results
