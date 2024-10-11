@@ -1,92 +1,95 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.10 １
+修改日期：2024.10.10
  ----------------------------------------
  */
-const ipApiUrl = "http://ip-api.com/json"; // 用于获取IP的API
-const REQUEST_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
+const REQUEST_HEADERS = { 
+    'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
     'Accept-Language': 'en',
-};
+}
+
+// 即將登陸
+const STATUS_COMING = 2
+// 支持解鎖
+const STATUS_AVAILABLE = 1
+// 不支持解鎖
+const STATUS_NOT_AVAILABLE = 0
+// 檢測超時
+const STATUS_TIMEOUT = -1
+// 檢測異常
+const STATUS_ERROR = -2
+
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36'
 
 let args = getArgs();
 
-(async () => {
-    try {
-        let now = new Date();
-        let hour = now.getHours();
-        let minutes = now.getMinutes();
-        hour = hour > 9 ? hour : "0" + hour;
-        minutes = minutes > 9 ? minutes : "0" + minutes;
+;(async () => {
+    let now = new Date();
+    let hour = now.getHours();
+    let minutes = now.getMinutes();
+    hour = hour > 9 ? hour : "0" + hour;
+    minutes = minutes > 9 ? minutes : "0" + minutes;
 
-        let panel_result = {
-            title: `${args.title} | ${hour}:${minutes}` || `解鎖檢測 | ${hour}:${minutes}`,
-            content: '',
-            icon: args.icon || 'play.tv.fill',
-            'icon-color': args.color || '#FF2D55',
-        };
+    // 根據傳入的參數設置面板標題和圖標
+    let panel_result = {
+        title: `${args.title} | ${hour}:${minutes}` || `解鎖檢測 | ${hour}:${minutes}`,
+        content: '',
+        icon: args.icon || 'play.tv.fill',
+        'icon-color': args.color || '#FF2D55',
+    };
 
-        let notification_content = '';  // 用于存储通知内容
 
-        // 檢測 IP 和位置
-        const ipData = await fetchData(ipApiUrl);
-        const ipInfo = JSON.parse(ipData);
-        const ipInfoText = `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}\n`;
-        notification_content += ipInfoText;  // 添加到通知内容
-        panel_result.content += ipInfoText;  // 添加到面板内容
+    // 同時檢測多個服務
+    let [{ region, status }] = await Promise.all([testDisneyPlus()])
+    await Promise.all([check_chatgpt(), check_youtube_premium(), check_netflix()])
+        .then((result) => {
+            let disney_result = ''
+            if (status == STATUS_COMING) {
+                disney_result = 'Disney\u2009➟ \u2009≈ ' + region
+            } else if (status == STATUS_AVAILABLE){
+                disney_result = 'Disney\u2009➟ \u2611\u2009' + region
+            } else if (status == STATUS_NOT_AVAILABLE) {
+                disney_result = 'Disney\u2009➟ \u2612'
+            } else if (status == STATUS_TIMEOUT) {
+                disney_result = 'Disney\u2009➟ N/A'
+            } else {
+                disney_result = 'Disney\u2009➟ N/A';
+            }
 
-        // 檢測服務狀態
-        const [{ region, status }] = await Promise.all([testDisneyPlus()]);
-        const results = await Promise.all([check_chatgpt(), check_youtube_premium(), check_netflix()]);
+            result.push(disney_result)
 
-        let disney_result = '';
-        if (status == STATUS_COMING) {
-            disney_result = 'Disney\u2009➟ \u2009≈ ' + region;
-        } else if (status == STATUS_AVAILABLE) {
-            disney_result = 'Disney\u2009➟ \u2611\u2009' + region;
-        } else {
-            disney_result = 'Disney\u2009➟ N/A';
-        }
+            // 將結果整合成面板內容
+            let youtube_netflix = [result[1], result[2]].join('\t| ')
+            let chatgpt_disney = [result[0], result[3]].join('\t| ')
 
-        results.push(disney_result);
-
-        let youtube_netflix = [results[1], results[2]].join('\t|  ');
-        let chatgpt_disney = [results[0], results[3]].join('\t|  ');
-
-        let services_status = youtube_netflix + '\n' + chatgpt_disney;
-        notification_content += services_status;  // 添加到通知内容
-        panel_result['content'] += services_status;  // 添加到面板内容
-
-        // 發送包含 IP 和檢測結果的推送通知
-        $notification.post("檢測結果", "", notification_content);
-        $done(panel_result);
-    } catch (error) {
-        // 捕获所有错误并通知
-        $notification.post("脚本运行失败", error.toString());
-        $done();
-    }
+            // 添加IP信息到面板內容
+            let ipInfo = await check_ip();
+            let ipText = `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}`;
+            panel_result['content'] = ipText + '\n\n' + youtube_netflix + '\n' + chatgpt_disney
+        })
+        .finally(() => {
+            $done(panel_result)
+        })
 })();
 
-function fetchData(url) {
-    return new Promise((resolve, reject) => {
-        $httpClient.get({
-            url: url,
-            headers: REQUEST_HEADERS,
-        }, function (error, response, data) {
-            if (error || response.status !== 200) {
-                reject(error || '请求失败');
-            } else {
-                resolve(data);
-            }
-        });
-    });
+
+async function check_ip() {
+    let ipData = await fetchData('http://ip-api.com/json');
+    const ipInfo = JSON.parse(ipData);
+    $notification.post("IP 信息", "", `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}`);
+    console.log("获取的 IP 信息:\n" + JSON.stringify(ipInfo, null, 2));
+    return ipInfo;
 }
 
+
+// 參數處理函數
 function getArgs() {
     return Object.fromEntries(
         $argument.split("&").map(item => item.split("=")).map(([k, v]) => [k, decodeURIComponent(v)])
     );
 }
+
 
 
 // 檢測 ChatGPT
@@ -409,4 +412,4 @@ function getIcon(code, icons) {
         }
     }
     return code
-}=
+}
