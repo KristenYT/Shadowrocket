@@ -4,26 +4,15 @@
  ----------------------------------------
  */
 const REQUEST_HEADERS = { 
-    'User-Agent':
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
-    'Accept-Language': 'en',
-}
-
-// 即將登陸
-const STATUS_COMING = 2
-// 支持解鎖
-const STATUS_AVAILABLE = 1
-// 不支持解鎖
-const STATUS_NOT_AVAILABLE = 0
-// 檢測超時
-const STATUS_TIMEOUT = -1
-// 檢測異常
-const STATUS_ERROR = -2
-
-const REQUEST_HEADERS = { 
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
     'Accept-Language': 'en',
 };
+
+const STATUS_COMING = 2; // 即將登陸
+const STATUS_AVAILABLE = 1; // 支持解鎖
+const STATUS_NOT_AVAILABLE = 0; // 不支持解鎖
+const STATUS_TIMEOUT = -1; // 檢測超時
+const STATUS_ERROR = -2; // 檢測異常
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36';
 const ipApiUrl = "http://ip-api.com/json"; // IP获取API
