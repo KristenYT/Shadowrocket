@@ -41,7 +41,7 @@ let args = getArgs();
 
 
     // 同時檢測多個服務
-    let [{ region, status }] = await Promise.all([testDisneyPlus()])
+let [{ region, status }] = await Promise.all([testDisneyPlus()])
     await Promise.all([check_chatgpt(), check_youtube_premium(), check_netflix()])
         .then((result) => {
             let disney_result = ''
@@ -73,6 +73,7 @@ let args = getArgs();
         })
 })();
 
+// ...
 
 async function check_ip() {
     let ipData = await fetchData('http://ip-api.com/json');
