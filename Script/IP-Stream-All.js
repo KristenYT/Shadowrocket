@@ -25,12 +25,15 @@ let args = getArgs();
         'icon-color': args.color || '#FF2D55',
     };
 
+    let notification_content = '';  // 用于存储通知内容
+
     // 先檢測 IP 和位置
     await fetchData(ipApiUrl)
         .then((ipData) => {
             const ipInfo = JSON.parse(ipData);
-            $notification.post("IP 信息", "", `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}`);
-            panel_result.content += `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}\n`;
+            const ipInfoText = `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}\n`;
+            notification_content += ipInfoText;  // 添加到通知内容
+            panel_result.content += ipInfoText;  // 添加到面板内容
         })
         .catch((error) => {
             $notification.post("IP 信息檢測失敗", error);
@@ -53,9 +56,13 @@ let args = getArgs();
             let youtube_netflix = [result[1], result[2]].join('\t|  ');
             let chatgpt_disney = [result[0], result[3]].join('\t|  ');
 
-            panel_result['content'] += youtube_netflix + '\n' + chatgpt_disney;
+            let services_status = youtube_netflix + '\n' + chatgpt_disney;
+            notification_content += services_status;  // 添加到通知内容
+            panel_result['content'] += services_status;  // 添加到面板内容
         })
         .finally(() => {
+            // 發送包含 IP 和檢測結果的推送通知
+            $notification.post("檢測結果", "", notification_content);
             $done(panel_result);
         });
 })();
