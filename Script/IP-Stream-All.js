@@ -12,59 +12,59 @@ const REQUEST_HEADERS = {
 let args = getArgs();
 
 (async () => {
-    let now = new Date();
-    let hour = now.getHours();
-    let minutes = now.getMinutes();
-    hour = hour > 9 ? hour : "0" + hour;
-    minutes = minutes > 9 ? minutes : "0" + minutes;
+    try {
+        let now = new Date();
+        let hour = now.getHours();
+        let minutes = now.getMinutes();
+        hour = hour > 9 ? hour : "0" + hour;
+        minutes = minutes > 9 ? minutes : "0" + minutes;
 
-    let panel_result = {
-        title: `${args.title} | ${hour}:${minutes}` || `解鎖檢測 | ${hour}:${minutes}`,
-        content: '',
-        icon: args.icon || 'play.tv.fill',
-        'icon-color': args.color || '#FF2D55',
-    };
+        let panel_result = {
+            title: `${args.title} | ${hour}:${minutes}` || `解鎖檢測 | ${hour}:${minutes}`,
+            content: '',
+            icon: args.icon || 'play.tv.fill',
+            'icon-color': args.color || '#FF2D55',
+        };
 
-    let notification_content = '';  // 用于存储通知内容
+        let notification_content = '';  // 用于存储通知内容
 
-    // 先檢測 IP 和位置
-    await fetchData(ipApiUrl)
-        .then((ipData) => {
-            const ipInfo = JSON.parse(ipData);
-            const ipInfoText = `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}\n`;
-            notification_content += ipInfoText;  // 添加到通知内容
-            panel_result.content += ipInfoText;  // 添加到面板内容
-        })
-        .catch((error) => {
-            $notification.post("IP 信息檢測失敗", error);
-        });
+        // 檢測 IP 和位置
+        const ipData = await fetchData(ipApiUrl);
+        const ipInfo = JSON.parse(ipData);
+        const ipInfoText = `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}\n`;
+        notification_content += ipInfoText;  // 添加到通知内容
+        panel_result.content += ipInfoText;  // 添加到面板内容
 
-    // 檢測服務狀態
-    let [{ region, status }] = await Promise.all([testDisneyPlus()]);
-    await Promise.all([check_chatgpt(), check_youtube_premium(), check_netflix()])
-        .then((result) => {
-            let disney_result = '';
-            if (status == STATUS_COMING) {
-                disney_result = 'Disney\u2009➟ \u2009≈ ' + region;
-            } else if (status == STATUS_AVAILABLE) {
-                disney_result = 'Disney\u2009➟ \u2611\u2009' + region;
-            } else {
-                disney_result = 'Disney\u2009➟ N/A';
-            }
-            result.push(disney_result);
+        // 檢測服務狀態
+        const [{ region, status }] = await Promise.all([testDisneyPlus()]);
+        const results = await Promise.all([check_chatgpt(), check_youtube_premium(), check_netflix()]);
 
-            let youtube_netflix = [result[1], result[2]].join('\t|  ');
-            let chatgpt_disney = [result[0], result[3]].join('\t|  ');
+        let disney_result = '';
+        if (status == STATUS_COMING) {
+            disney_result = 'Disney\u2009➟ \u2009≈ ' + region;
+        } else if (status == STATUS_AVAILABLE) {
+            disney_result = 'Disney\u2009➟ \u2611\u2009' + region;
+        } else {
+            disney_result = 'Disney\u2009➟ N/A';
+        }
 
-            let services_status = youtube_netflix + '\n' + chatgpt_disney;
-            notification_content += services_status;  // 添加到通知内容
-            panel_result['content'] += services_status;  // 添加到面板内容
-        })
-        .finally(() => {
-            // 發送包含 IP 和檢測結果的推送通知
-            $notification.post("檢測結果", "", notification_content);
-            $done(panel_result);
-        });
+        results.push(disney_result);
+
+        let youtube_netflix = [results[1], results[2]].join('\t|  ');
+        let chatgpt_disney = [results[0], results[3]].join('\t|  ');
+
+        let services_status = youtube_netflix + '\n' + chatgpt_disney;
+        notification_content += services_status;  // 添加到通知内容
+        panel_result['content'] += services_status;  // 添加到面板内容
+
+        // 發送包含 IP 和檢測結果的推送通知
+        $notification.post("檢測結果", "", notification_content);
+        $done(panel_result);
+    } catch (error) {
+        // 捕获所有错误并通知
+        $notification.post("脚本运行失败", error.toString());
+        $done();
+    }
 })();
 
 function fetchData(url) {
@@ -87,7 +87,6 @@ function getArgs() {
         $argument.split("&").map(item => item.split("=")).map(([k, v]) => [k, decodeURIComponent(v)])
     );
 }
-
 
 
 // 檢測 ChatGPT
