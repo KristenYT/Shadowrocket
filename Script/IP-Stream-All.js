@@ -82,9 +82,9 @@ function getServiceStatus(status, region, serviceName) {
     if (status == STATUS_COMING) {
         return `${serviceName} ➟ ≈ ${region}`;
     } else if (status == STATUS_AVAILABLE) {
-        return `${serviceName} ➟ ✔ ${region}`;
+        return `${serviceName} ➟ \u2611 ${region}`;
     } else if (status == STATUS_NOT_AVAILABLE) {
-        return `${serviceName} ➟ ✘`;
+        return `${serviceName} ➟ \u2612`;
     } else if (status == STATUS_TIMEOUT) {
         return `${serviceName} ➟ N/A`;
     } else {
