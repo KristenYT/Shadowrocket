@@ -67,7 +67,7 @@ let args = getArgs();
         })
         .finally(() => {
             // Push notification with all results
-            $notification.post("解锁检测结果", "", notificationContent);
+            $notification.post("网络、流媒体检测", "", notificationContent);
             $done(panel_result); // Display the final panel result
         });
 })();
