@@ -75,9 +75,9 @@ let args = getArgs();
 // Helper function to process the unlock status for each service
 function getServiceStatus(status, region, serviceName) {
     if (status == STATUS_COMING) {
-        return `${serviceName} ➟ ≈ ${region}`;
+        return `${serviceName} ➟ \u2009🔜 ${region}`;
     } else if (status == STATUS_AVAILABLE) {
-        return `${serviceName} ➟ ✅ ${region}`;
+        return `${serviceName} ➟ ✅\u2009${region}`;
     } else if (status == STATUS_NOT_AVAILABLE) {
         return `${serviceName} ➟ ❌`;
     } else if (status == STATUS_TIMEOUT) {
