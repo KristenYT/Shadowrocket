@@ -3,28 +3,13 @@
 修改日期：2024.10.10
  ----------------------------------------
  */
-const REQUEST_HEADERS = { 
-    'User-Agent':
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
+const ipApiUrl = "http://ip-api.com/json"; // 用于获取IP的API
+const REQUEST_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
     'Accept-Language': 'en',
-}
-
-// 即將登陸
-const STATUS_COMING = 2
-// 支持解鎖
-const STATUS_AVAILABLE = 1
-// 不支持解鎖
-const STATUS_NOT_AVAILABLE = 0
-// 檢測超時
-const STATUS_TIMEOUT = -1
-// 檢測異常
-const STATUS_ERROR = -2
-
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36'
+};
 
 let args = getArgs();
-
-const ipApiUrl = "https://ipinfo.io/json"; // IP信息获取
 
 (async () => {
     let now = new Date();
@@ -33,78 +18,63 @@ const ipApiUrl = "https://ipinfo.io/json"; // IP信息获取
     hour = hour > 9 ? hour : "0" + hour;
     minutes = minutes > 9 ? minutes : "0" + minutes;
 
-    // 根据传入的参数设置面板标题和图标
     let panel_result = {
-        title: `${args.title} | ${hour}:${minutes}` || `解锁检测 | ${hour}:${minutes}`,
+        title: `${args.title} | ${hour}:${minutes}` || `解鎖檢測 | ${hour}:${minutes}`,
         content: '',
         icon: args.icon || 'play.tv.fill',
         'icon-color': args.color || '#FF2D55',
     };
 
-    try {
-        // 同时检测 IP 和 Disney+
-        let [ipData, disneyResult] = await Promise.all([
-            fetchData(ipApiUrl),   // IP 信息获取
-            testDisneyPlus()       // Disney+ 解锁状态检测
-        ]);
+    // 先檢測 IP 和位置
+    await fetchData(ipApiUrl)
+        .then((ipData) => {
+            const ipInfo = JSON.parse(ipData);
+            $notification.post("IP 信息", "", `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}`);
+            panel_result.content += `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}\n`;
+        })
+        .catch((error) => {
+            $notification.post("IP 信息檢測失敗", error);
+        });
 
-        // 处理 IP 信息
-        let ipInfo = JSON.parse(ipData);
-        let ipContent = `IP: ${ipInfo.ip}   📍: ${ipInfo.city}, ${ipInfo.country}`;
-
-        // 检测 Netflix、YouTube Premium 和 ChatGPT
-        let [netflixResult, youtubeResult, chatgptResult] = await Promise.all([
-            check_netflix(),
-            check_youtube_premium(),
-            check_chatgpt()
-        ]);
-
-        // 处理 Disney+ 结果
-        let disneyResultText = formatDisneyPlusResult(disneyResult.status, disneyResult.region);
-
-        // 将结果整合为面板内容
-        panel_result['content'] = `${ipContent}\n${youtubeResult} \t| ${netflixResult}\nChatGPT ➟ ${chatgptResult} \t| Disney ➟ ${disneyResultText}`;
-
-        // 推送通知结果
-        $notification.post(
-            `网络、流媒体检测 ${hour}:${minutes}`,  // 标题
-            "",  // 副标题
-            panel_result['content']  // 通知内容
-        );
-
-        $done(panel_result);
-    } catch (error) {
-        // 出现错误时推送通知
-        $notification.post("解锁检测失败", "", error.toString());
-        $done(panel_result);
-    }
-})();
-
-// 其他函数保持不变，例如 check_netflix、check_youtube_premium、testDisneyPlus 等...
-// Functions for testing services like Netflix, YouTube, and Disney+ remain the same...
-    
-    // 同時檢測多個服務
-    let [{ region, status }] = await Promise.all([testDisneyPlus()])
+    // 檢測服務狀態
+    let [{ region, status }] = await Promise.all([testDisneyPlus()]);
     await Promise.all([check_chatgpt(), check_youtube_premium(), check_netflix()])
         .then((result) => {
-        let disney_result = ''
-        if (status == STATUS_COMING) {
-            disney_result = 'Disney\u2009➟ \u2009≈ ' + region
-        } else if (status == STATUS_AVAILABLE){
-            disney_result = 'Disney\u2009➟ \u2611\u2009' + region
-        } else if (status == STATUS_NOT_AVAILABLE) {
-            disney_result = 'Disney\u2009➟ \u2612'
-        } else if (status == STATUS_TIMEOUT) {
-            disney_result = 'Disney\u2009➟ N/A'
-        } else {
-            disney_result = 'Disney\u2009➟ N/A';
-        }
-        result.push(disney_result)
-    }
+            let disney_result = '';
+            if (status == STATUS_COMING) {
+                disney_result = 'Disney\u2009➟ \u2009≈ ' + region;
+            } else if (status == STATUS_AVAILABLE) {
+                disney_result = 'Disney\u2009➟ \u2611\u2009' + region;
+            } else {
+                disney_result = 'Disney\u2009➟ N/A';
+            }
+            result.push(disney_result);
 
+            let youtube_netflix = [result[1], result[2]].join('\t|  ');
+            let chatgpt_disney = [result[0], result[3]].join('\t|  ');
 
+            panel_result['content'] += youtube_netflix + '\n' + chatgpt_disney;
+        })
+        .finally(() => {
+            $done(panel_result);
+        });
+})();
 
-// 參數處理函數
+function fetchData(url) {
+    return new Promise((resolve, reject) => {
+        $httpClient.get({
+            url: url,
+            headers: REQUEST_HEADERS,
+        }, function (error, response, data) {
+            if (error || response.status !== 200) {
+                reject(error || '请求失败');
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
+
 function getArgs() {
     return Object.fromEntries(
         $argument.split("&").map(item => item.split("=")).map(([k, v]) => [k, decodeURIComponent(v)])
