@@ -15,7 +15,7 @@ const STATUS_TIMEOUT = -1; // 檢測超時
 const STATUS_ERROR = -2; // 檢測異常
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36';
-const ipApiUrl = "http://ip-api.com/json"; // IP获取API
+const ipApiUrl = "https://ipinfo.io/json"; // IP获取API
 
 let args = getArgs();
 
@@ -34,18 +34,18 @@ let args = getArgs();
         'icon-color': args.color || '#FF2D55',
     };
 
+    let notificationContent = "";
+
     // Fetch IP information and add it to the panel
     try {
         const ipData = await fetchData(ipApiUrl);
         const ipInfo = JSON.parse(ipData);
-        const ipAddress = `IP: ${ipInfo.query} | Location: ${ipInfo.city}, ${ipInfo.country}`;
+        const ipAddress = `IP: ${ipInfo.ip}  📍: ${ipInfo.city}, ${ipInfo.country}`;
         panel_result.content = `${ipAddress}\n`; // Add IP to the first line of the panel content
-
-        // Send notification about IP
-        $notification.post("IP 信息", "", `IP: ${ipInfo.query}\n位置: ${ipInfo.city}, ${ipInfo.country}`);
+        notificationContent += `IP: ${ipInfo.ip} | Location: ${ipInfo.city}, ${ipInfo.country}\n`; // Add IP info to notification content
     } catch (error) {
         panel_result.content = "IP: N/A\n"; // Handle errors if IP can't be fetched
-        $notification.post("IP 信息获取失败", "", `错误: ${error}`);
+        notificationContent += "IP: N/A\n";
     }
 
     // Simultaneously check multiple services
@@ -58,10 +58,16 @@ let args = getArgs();
             let youtube_netflix = [result[1], result[2]].join(' |  ');
             let chatgpt_disney = [result[0], result[3]].join(' |  ');
 
-            // Update panel content
+            // Update panel content with the service status results
             panel_result.content += youtube_netflix + '\n' + chatgpt_disney;
+
+            // Add unlock results to the notification content
+            notificationContent += `YouTube & Netflix: ${youtube_netflix}\n`;
+            notificationContent += `ChatGPT & Disney: ${chatgpt_disney}`;
         })
         .finally(() => {
+            // Push notification with all results
+            $notification.post("解锁检测结果", "", notificationContent);
             $done(panel_result); // Display the final panel result
         });
 })();
@@ -71,9 +77,9 @@ function getServiceStatus(status, region, serviceName) {
     if (status == STATUS_COMING) {
         return `${serviceName} ➟ ≈ ${region}`;
     } else if (status == STATUS_AVAILABLE) {
-        return `${serviceName} ➟ \u2611 ${region}`;
+        return `${serviceName} ➟ ✅ ${region}`;
     } else if (status == STATUS_NOT_AVAILABLE) {
-        return `${serviceName} ➟ \u2612`;
+        return `${serviceName} ➟ ❌`;
     } else if (status == STATUS_TIMEOUT) {
         return `${serviceName} ➟ N/A`;
     } else {
@@ -140,9 +146,9 @@ async function check_chatgpt() {
   await inner_check()
     .then((code) => {
       if (code === 'Not Available') {
-        check_result += '\u2612  \u2009'
+        check_result += '❌  \u2009'
       } else {
-        check_result += '\u2611\u2009' + code
+        check_result += '✅\u2009' + code
       }
     })
     .catch((error) => {
@@ -191,9 +197,9 @@ async function check_youtube_premium() {
     await inner_check()
         .then((code) => {
         if (code === 'Not Available') {
-            youtube_check_result += '\u2612     \u2009'
+            youtube_check_result += '❌     \u2009'
         } else {
-            youtube_check_result += '\u2611\u2009' + code
+            youtube_check_result += '✅\u2009' + code
         }
     })
         .catch((error) => {
@@ -253,7 +259,7 @@ async function check_netflix() {
         if (code === 'Not Found') {
             return inner_check(80018499)
         }
-        netflix_check_result += '\u2611\u2009' + code
+        netflix_check_result += '✅\u2009' + code
         return Promise.reject('BreakSignal')
     })
         .then((code) => {
@@ -261,7 +267,7 @@ async function check_netflix() {
             return Promise.reject('Not Available')
         }
 
-        netflix_check_result += '⚠\u2009' + code
+        netflix_check_result += '⚠️\u2009' + code
         return Promise.reject('BreakSignal')
     })
         .catch((error) => {
@@ -269,7 +275,7 @@ async function check_netflix() {
             return
         }
         if (error === 'Not Available') {
-            netflix_check_result += '\u2612'
+            netflix_check_result += '❌'
             return
         }
         netflix_check_result += 'N/A'
