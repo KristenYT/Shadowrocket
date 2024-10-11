@@ -55,8 +55,8 @@ let args = getArgs();
             let disney_result = getServiceStatus(status, region, "Disney");
             result.push(disney_result);
 
-            let youtube_netflix = [result[1], result[2]].join('\t|  ');
-            let chatgpt_disney = [result[0], result[3]].join('\t|  ');
+            let youtube_netflix = [result[1], result[2]].join('\u2009\t|  ');
+            let chatgpt_disney = [result[0], result[3]].join('\u2009\t|  ');
 
             // Update panel content with the service status results
             panel_result.content += youtube_netflix + '\n' + chatgpt_disney;
@@ -75,7 +75,7 @@ let args = getArgs();
 // Helper function to process the unlock status for each service
 function getServiceStatus(status, region, serviceName) {
     if (status == STATUS_COMING) {
-        return `${serviceName} ➟ 🔜 ${region}`;
+        return `${serviceName} ➟ 🔜\u2009${region}`;
     } else if (status == STATUS_AVAILABLE) {
         return `${serviceName} ➟ ✅\u2009${region}`;
     } else if (status == STATUS_NOT_AVAILABLE) {
