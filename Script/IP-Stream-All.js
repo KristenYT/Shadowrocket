@@ -55,8 +55,8 @@ let args = getArgs();
             let disney_result = getServiceStatus(status, region, "Disney");
             result.push(disney_result);
 
-            let youtube_netflix = [result[1], result[2]].join(' \t|  ');
-            let chatgpt_disney = [result[0], result[3]].join(' \t|  ');
+            let youtube_netflix = [result[1], result[2]].join('  \t|  ');
+            let chatgpt_disney = [result[0], result[3]].join('  \t|  ');
 
             // Update panel content with the service status results
             panel_result.content += youtube_netflix + '\n' + chatgpt_disney;
