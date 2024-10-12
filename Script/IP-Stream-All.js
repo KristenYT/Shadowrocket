@@ -146,7 +146,7 @@ async function check_chatgpt() {
   await inner_check()
     .then((code) => {
       if (code === 'Not Available') {
-        check_result += '❌  \u2009'
+        check_result += '❌    \u2009'
       } else {
         check_result += '✅\u2009' + code
       }
