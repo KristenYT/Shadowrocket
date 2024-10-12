@@ -67,7 +67,7 @@ let args = getArgs();
         })
         .finally(() => {
             // Push notification with all results
-            $notification.post(`网络、流媒体检测完成 | ${hour}:${minutes}`, "", notificationContent);
+            $notification.post(`检测完成，结果如下 | ${hour}:${minutes}`, "", notificationContent);
             $done(panel_result); // Display the final panel result
         });
 })();
