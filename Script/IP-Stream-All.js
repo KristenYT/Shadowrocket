@@ -40,7 +40,7 @@ let args = getArgs();
     try {
         const ipData = await fetchData(ipApiUrl);
         const ipInfo = JSON.parse(ipData);
-        const ipAddress = `IP: ${ipInfo.ip}  📍: ${ipInfo.city}, ${ipInfo.country}`;
+        const ipAddress = `IP: ${ipInfo.ip}  📍: ${ipInfo.region}, ${ipInfo.country}`;
         panel_result.content = `${ipAddress}\n`; // Add IP to the first line of the panel content
         notificationContent += `IP: ${ipInfo.ip}  📍: ${ipInfo.city}, ${ipInfo.country}\n`; // Add IP info to notification content
     } catch (error) {
