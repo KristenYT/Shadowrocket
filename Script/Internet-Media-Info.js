@@ -132,9 +132,9 @@ async function check_chatgpt() {
         let country_code = cf.loc;
         let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
         if (restricted_countries.includes(country_code)) {
-          resolve({ web: '❌', country: country_code });
+          resolve('❌');
         } else {
-          resolve({ web: '✅', country: country_code });
+          resolve('✅');
         }
       })
     })
