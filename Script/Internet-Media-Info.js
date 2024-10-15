@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.16
+修改日期：2024.10.166
  ---------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -111,52 +111,6 @@ function getArgs() {
 
 
 // 檢測 ChatGPT (更新後)
-async function check_chatgpt() {
-    // 定義內部檢測函數
-    const checkEndpoint = (url) => {
-        return new Promise((resolve, reject) => {
-            const options = {
-                url: url,
-                headers: REQUEST_HEADERS,
-            };
-            $httpClient.get(options, (error, response, data) => {
-                if (error || response.status !== 200) {
-                    reject('N/A');
-                    return;
-                }
-
-                // 檢測返回數據中是否包含關鍵字
-                if (data.includes("location")) {
-                    const match = data.match(/loc=([A-Z]{2})/); // 提取地區代碼
-                    resolve(match ? match[1] : "Unknown");
-                } else if (data.includes("VPN")) {
-                    resolve("VPN");
-                } else if (data.includes("Request")) {
-                    resolve("Request");
-                } else {
-                    resolve("Unknown");
-                }
-            });
-        });
-    };
-
-    // 定義網頁和客戶端的 URL
-    const webURL = 'https://chat.openai.com/cdn-cgi/trace';
-    const clientURL = 'https://android.chat.openai.com/cdn-cgi/trace';
-
-    try {
-        // 同時檢測兩個 URL
-        const webStatus = await checkEndpoint(webURL);
-        const clientStatus = await checkEndpoint(clientURL);
-
-        // 根據檢測結果返回狀態
-        if (webStatus !== "Unknown" && webStatus !== "VPN") {
-            if (clientStatus === "VPN") {
-                return `ChatGPT ➟ ⚠️\u2009(${webStatus})`;
-            } else if (clientStatus === "Request") {
-                return `ChatGPT ➟ ✅\u2009(${webStatus})`;
-            }
-        }// 檢測 ChatGPT (更新後)
 async function check_chatgpt() {
     // 定義內部檢測函數
     const checkEndpoint = (url) => {
