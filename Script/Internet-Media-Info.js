@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.16
+修改日期：2024.10.166
  ---------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -109,82 +109,95 @@ function getArgs() {
 }
 
 
+// 檢測 ChatGPT
 async function check_chatgpt() {
-    let webCheck = () => {
-        return new Promise((resolve, reject) => {
-            let option = {
-                url: 'http://chat.openai.com',
-                headers: REQUEST_HEADERS,
-            };
-
-            $httpClient.get(option, function(error, response, data) {
-                if (error != null || response.status !== 200) {
-                    reject('Error');
-                    return;
-                }
-
-                let lines = data.split("\n");
-                let cf = lines.reduce((acc, line) => {
-                    let [key, value] = line.split("=");
-                    acc[key] = value;
-                    return acc;
-                }, {});
-                
-                if (cf.loc.includes("location")) {
-                    resolve('location');
-                } else if (cf.loc.includes("VPN")) {
-                    resolve('VPN');
-                } else {
-                    resolve('N/A');
-                }
-            });
-        });
-    };
-
-    let clientCheck = () => {
-        return new Promise((resolve, reject) => {
-            let option = {
-                url: 'https://android.chat.openai.com',
-                headers: REQUEST_HEADERS,
-            };
-
-            $httpClient.get(option, function(error, response, data) {
-                if (error != null || response.status !== 200) {
-                    reject('Error');
-                    return;
-                }
-
-                if (data.includes("Request")) {
-                    resolve('Request');
-                } else if (data.includes("VPN")) {
-                    resolve('VPN');
-                } else {
-                    resolve('N/A');
-                }
-            });
-        });
-    };
-
-    let check_result = '';
-
-    try {
-        const [webResult, clientResult] = await Promise.all([webCheck(), clientCheck()]);
-        
-        if (webResult === 'location' && clientResult === 'Request') {
-            check_result = 'ChatGPT ➟ ✅';
-        } else if (webResult === 'location' && clientResult === 'VPN') {
-            check_result = 'ChatGPT ➟ ⚠️';
-        } else if (webResult === 'VPN') {
-            check_result = 'ChatGPT ➟ ❌';
-        } else {
-            check_result = 'ChatGPT ➟ N/A';
+  let inner_check = () => {
+    return new Promise((resolve, reject) => {
+      let option = {
+        url: 'http://chat.openai.com/cdn-cgi/trace',
+        headers: REQUEST_HEADERS,
+      }
+      $httpClient.get(option, function(error, response, data) {
+        if (error != null || response.status !== 200) {
+          reject('Error')
+          return
         }
-    } catch (error) {
-        check_result = 'ChatGPT ➟ N/A';
-    }
 
-    return check_result;
+        let lines = data.split("\n");
+        let cf = lines.reduce((acc, line) => {
+          let [key, value] = line.split("=");
+          acc[key] = value;
+          return acc;
+        }, {});
+
+        let country_code = cf.loc;
+        let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
+        if (restricted_countries.includes(country_code)) {
+          resolve('Not Available');
+        } else {
+          resolve(country_code.toUpperCase());
+        }
+      });
+    });
+  };
+
+  let check_android_chatgpt = () => {
+    return new Promise((resolve, reject) => {
+      let option = {
+        url: 'https://android.chat.openai.com',
+        headers: REQUEST_HEADERS,
+      };
+      $httpClient.get(option, function(error, response, data) {
+        if (error != null || response.status !== 200) {
+          reject('Error');
+          return;
+        }
+        if (data.includes('Request')) {
+          resolve('✅');
+        } else if (data.includes('VPN')) {
+          resolve('⚠️');
+        } else {
+          resolve('❌');
+        }
+      });
+    });
+  };
+
+  let web_result = 'ChatGPT Web ➟ ';
+  let android_result = 'ChatGPT Android ➟ ';
+
+  await inner_check()
+    .then((code) => {
+      if (code === 'Not Available') {
+        web_result += '❌';
+      } else {
+        web_result += '✅ ' + code;
+      }
+    })
+    .catch(() => {
+      web_result += 'N/A';
+    });
+
+  await check_android_chatgpt()
+    .then((result) => {
+      android_result += result;
+    })
+    .catch(() => {
+      android_result += 'N/A';
+    });
+
+  // Combine results
+  if (web_result.includes('✅') && android_result.includes('✅')) {
+    return '✅ ' + web_result.split('➟ ')[1];
+  } else if (web_result.includes('✅') && android_result.includes('⚠️')) {
+    return '⚠️ ' + web_result.split('➟ ')[1];
+  } else if (web_result.includes('❌') && android_result.includes('❌')) {
+    return '❌';
+  } else {
+    return 'N/A';
+  }
 }
+
 
 
 // 檢測 YouTube Premium
