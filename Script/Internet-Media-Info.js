@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.166
+修改日期：2024.10.16
  ---------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -108,19 +108,21 @@ function getArgs() {
     );
 }
 
-
 // 檢測 ChatGPT
 async function check_chatgpt() {
-  let inner_check = () => {
+  let check_result = 'ChatGPT\u2009➟ '; // 初始化結果變量
+
+  // 檢查網頁訪問
+  let inner_check_web = () => {
     return new Promise((resolve, reject) => {
       let option = {
         url: 'http://chat.openai.com/cdn-cgi/trace',
         headers: REQUEST_HEADERS,
-      }
+      };
       $httpClient.get(option, function(error, response, data) {
         if (error != null || response.status !== 200) {
-          reject('Error')
-          return
+          reject('Error'); // 無法檢測或超時
+          return;
         }
 
         let lines = data.split("\n");
@@ -133,14 +135,15 @@ async function check_chatgpt() {
         let country_code = cf.loc;
         let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
         if (restricted_countries.includes(country_code)) {
-          resolve('Not Available');
+          resolve({ status: '❌', region: null }); // 網頁無法訪問
         } else {
-          resolve(country_code.toUpperCase());
+          resolve({ status: '✅', region: country_code.toUpperCase() }); // 網頁可訪問，返回地區代碼
         }
       });
     });
   };
 
+  // 檢查 Android 訪問
   let check_android_chatgpt = () => {
     return new Promise((resolve, reject) => {
       let option = {
@@ -149,55 +152,39 @@ async function check_chatgpt() {
       };
       $httpClient.get(option, function(error, response, data) {
         if (error != null || response.status !== 200) {
-          reject('Error');
+          reject('Error'); // 無法檢測或超時
           return;
         }
         if (data.includes('Request')) {
-          resolve('✅');
+          resolve('✅'); // Android 可訪問
         } else if (data.includes('VPN')) {
-          resolve('⚠️');
+          resolve('⚠️'); // Android 可能有限制，需要 VPN
         } else {
-          resolve('❌');
+          resolve('❌'); // Android 無法訪問
         }
       });
     });
   };
 
-  let web_result = 'ChatGPT Web ➟ ';
-  let android_result = 'ChatGPT Android ➟ ';
+  try {
+    // 並行檢查網頁和 Android 訪問
+    let [web_result, android_result] = await Promise.all([inner_check_web(), check_android_chatgpt()]);
 
-  await inner_check()
-    .then((code) => {
-      if (code === 'Not Available') {
-        web_result += '❌';
-      } else {
-        web_result += '✅ ' + code;
-      }
-    })
-    .catch(() => {
-      web_result += 'N/A';
-    });
-
-  await check_android_chatgpt()
-    .then((result) => {
-      android_result += result;
-    })
-    .catch(() => {
-      android_result += 'N/A';
-    });
-
-  // Combine results
-  if (web_result.includes('✅') && android_result.includes('✅')) {
-    return '✅ ' + web_result.split('➟ ')[1];
-  } else if (web_result.includes('✅') && android_result.includes('⚠️')) {
-    return '⚠️ ' + web_result.split('➟ ')[1];
-  } else if (web_result.includes('❌') && android_result.includes('❌')) {
-    return '❌';
-  } else {
-    return 'N/A';
+    if (web_result.status === '✅' && android_result === '✅') {
+      check_result += '✅ ' + web_result.region; // 網頁和 Android 都可訪問
+    } else if (web_result.status === '✅' && android_result === '⚠️') {
+      check_result += '⚠️ ' + web_result.region; // 只有網頁可訪問
+    } else if (web_result.status === '❌' && android_result === '❌') {
+      check_result += '❌'; // 兩者都無法訪問
+    } else {
+      check_result += 'N/A'; // 無法檢測或超時
+    }
+  } catch (error) {
+    check_result += 'N/A'; // 捕捉錯誤或超時情況
   }
-}
 
+  return check_result;
+}
 
 
 // 檢測 YouTube Premium
