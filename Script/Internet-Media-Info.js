@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.166
+修改日期：2024.10.16
  ---------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -110,19 +110,16 @@ function getArgs() {
 
 // 檢測 ChatGPT
 async function check_chatgpt() {
-  let check_result = 'ChatGPT\u2009➟ '; // 初始化結果變量
-
-  // 檢查網頁訪問
-  let inner_check_web = () => {
-    return new Promise((resolve) => {
+  let inner_check = () => {
+    return new Promise((resolve, reject) => {
       let option = {
         url: 'http://chat.openai.com/cdn-cgi/trace',
         headers: REQUEST_HEADERS,
-      };
+      }
       $httpClient.get(option, function(error, response, data) {
         if (error != null || response.status !== 200) {
-          resolve({ status: 'N/A', region: null }); // 無法檢測或超時
-          return;
+          reject('Error')
+          return
         }
 
         let lines = data.split("\n");
@@ -135,60 +132,57 @@ async function check_chatgpt() {
         let country_code = cf.loc;
         let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
         if (restricted_countries.includes(country_code)) {
-          resolve({ status: '❌', region: null }); // 網頁無法訪問
+          resolve({ web: '❌', country: country_code });
         } else {
-          resolve({ status: '✅', region: country_code.toUpperCase() }); // 網頁可訪問，返回地區代碼
+          resolve({ web: '✅', country: country_code });
         }
-      });
-    });
-  };
+      })
+    })
+  }
 
-  // 檢查 Android 訪問
-  let check_android_chatgpt = () => {
-    return new Promise((resolve) => {
+  let check_android_client = () => {
+    return new Promise((resolve, reject) => {
       let option = {
         url: 'https://android.chat.openai.com',
         headers: REQUEST_HEADERS,
-      };
+      }
       $httpClient.get(option, function(error, response, data) {
         if (error != null || response.status !== 200) {
-          resolve('N/A'); // 無法檢測或超時
-          return;
+          reject('Error')
+          return
         }
-        if (data.includes('Request')) {
-          resolve('✅'); // Android 可訪問
-        } else if (data.includes('VPN')) {
-          resolve('⚠️'); // Android 可能有限制，需要 VPN
+
+        if (data.includes("Request")) {
+          resolve('✅');
+        } else if (data.includes("VPN")) {
+          resolve('❌');
         } else {
-          resolve('❌'); // Android 無法訪問
+          resolve('N/A');
         }
-      });
-    });
-  };
+      })
+    })
+  }
+
+  let check_result = 'ChatGPT\u2009➟ ';
 
   try {
-    // 並行檢查網頁和 Android 訪問
-    let [web_result, android_result] = await Promise.all([
-      inner_check_web().catch(() => ({ status: 'N/A', region: null })), // 捕捉網頁檢查錯誤
-      check_android_chatgpt().catch(() => 'N/A') // 捕捉 Android 檢查錯誤
-    ]);
+    const webStatus = await inner_check();
+    const androidStatus = await check_android_client();
 
-    // 整合檢查結果
-    if (web_result.status === '✅' && android_result === '✅') {
-      check_result += '✅ ' + web_result.region; // 網頁和 Android 都可訪問
-    } else if (web_result.status === '✅' && android_result === '⚠️') {
-      check_result += '⚠️ ' + web_result.region; // 只有網頁可訪問
-    } else if (web_result.status === '❌' && android_result === '❌') {
-      check_result += '❌'; // 兩者都無法訪問
+    if (webStatus.web === '✅' && androidStatus === '✅') {
+      check_result += `✅ ${webStatus.country.toUpperCase()}`;
+    } else if (webStatus.web === '✅' && androidStatus !== '❌') {
+      check_result += `⚠️ ${webStatus.country.toUpperCase()}`;
     } else {
-      check_result += 'N/A'; // 無法檢測或超時
+      check_result += '❌';
     }
   } catch (error) {
-    check_result += 'N/A'; // 捕捉未知錯誤情況
+    check_result += 'N/A';
   }
 
   return check_result;
 }
+
 
 
 // 檢測 YouTube Premium
