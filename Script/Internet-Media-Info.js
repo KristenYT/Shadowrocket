@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.10
+修改日期：2024.10.16
  ----------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -110,7 +110,7 @@ function getArgs() {
 
 
 
-// 檢測 ChatGPT for both Web and iOS with N/A result for errors or timeouts
+// 檢測 ChatGPT for both Web and iOS with proper handling for ⚠️ result
 async function check_chatgpt() {
   let check_result = 'ChatGPT ➟ ';
 
@@ -179,6 +179,7 @@ async function check_chatgpt() {
   // Check both Web and iOS versions
   let web_code, ios_code;
 
+  // Check web version
   await inner_check_web()
     .then((code) => {
       web_code = code;
@@ -187,6 +188,7 @@ async function check_chatgpt() {
       web_code = 'N/A';  // Mark as N/A if web check fails
     });
 
+  // Check iOS version
   await inner_check_ios()
     .then((code) => {
       ios_code = code;
@@ -201,13 +203,14 @@ async function check_chatgpt() {
   } else if (web_code !== 'Not Available' && ios_code !== 'Not Available') {
     check_result += '✅\u2009' + web_code;  // Both web and iOS are available
   } else if (web_code !== 'Not Available' && ios_code === 'Not Available') {
-    check_result += '⚠️\u2009' + web_code;  // Only web is available
+    check_result += '⚠️\u2009' + web_code;  // Only web is available, iOS is not
   } else if (web_code === 'Not Available' && ios_code === 'Not Available') {
     check_result += '❌\u2009';  // Neither is available
   }
 
   return check_result;
 }
+
 
 
 // 檢測 YouTube Premium
