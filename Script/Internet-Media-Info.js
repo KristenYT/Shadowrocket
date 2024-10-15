@@ -115,11 +115,12 @@ async function check_chatgpt() {
       let option = {
         url: 'http://chat.openai.com/cdn-cgi/trace',
         headers: REQUEST_HEADERS,
-      }
-      $httpClient.get(option, function(error, response, data) {
+      };
+      $httpClient.get(option, function (error, response, data) {
         if (error != null || response.status !== 200) {
-          reject('Error')
-          return
+          console.error("Inner check error:", error || `Status: ${response.status}`);
+          reject('Error');
+          return;
         }
 
         let lines = data.split("\n");
@@ -132,24 +133,25 @@ async function check_chatgpt() {
         let country_code = cf.loc;
         let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
         if (restricted_countries.includes(country_code)) {
-          resolve('❌');
+          resolve({ web: '❌', country: country_code });
         } else {
-          resolve('✅');
+          resolve({ web: '✅', country: country_code });
         }
-      })
-    })
-  }
+      });
+    });
+  };
 
   let check_android_client = () => {
     return new Promise((resolve, reject) => {
       let option = {
         url: 'https://android.chat.openai.com',
         headers: REQUEST_HEADERS,
-      }
-      $httpClient.get(option, function(error, response, data) {
+      };
+      $httpClient.get(option, function (error, response, data) {
         if (error != null || response.status !== 200) {
-          reject('Error')
-          return
+          console.error("Android client check error:", error || `Status: ${response.status}`);
+          reject('Error');
+          return;
         }
 
         if (data.includes("Request")) {
@@ -159,9 +161,9 @@ async function check_chatgpt() {
         } else {
           resolve('N/A');
         }
-      })
-    })
-  }
+      });
+    });
+  };
 
   let check_result = 'ChatGPT\u2009➟ ';
 
@@ -171,12 +173,13 @@ async function check_chatgpt() {
 
     if (webStatus.web === '✅' && androidStatus === '✅') {
       check_result += `✅ ${webStatus.country.toUpperCase()}`;
-    } else if (webStatus.web === '✅' && androidStatus !== '❌') {
+    } else if (webStatus.web === '✅' && androidStatus === '❌') {
       check_result += `⚠️ ${webStatus.country.toUpperCase()}`;
     } else {
       check_result += '❌';
     }
   } catch (error) {
+    console.error("Check error:", error);
     check_result += 'N/A';
   }
 
