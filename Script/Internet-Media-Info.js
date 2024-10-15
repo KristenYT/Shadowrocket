@@ -1,7 +1,7 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.166
- ----------------------------------------
+修改日期：2024.10.16
+ ---------------------------------------
  */
 const REQUEST_HEADERS = { 
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
@@ -156,13 +156,58 @@ async function check_chatgpt() {
             } else if (clientStatus === "Request") {
                 return `ChatGPT ➟ ✅\u2009(${webStatus})`;
             }
+        }// 檢測 ChatGPT (更新後)
+async function check_chatgpt() {
+    // 定義內部檢測函數
+    const checkEndpoint = (url) => {
+        return new Promise((resolve, reject) => {
+            const options = {
+                url: url,
+                headers: REQUEST_HEADERS,
+            };
+            $httpClient.get(options, (error, response, data) => {
+                if (error || response.status !== 200) {
+                    reject('N/A');
+                    return;
+                }
+
+                // 提取地區代碼和其他關鍵詞判斷
+                let match = data.match(/loc=([A-Z]{2})/); // 提取地區代碼
+                if (match) {
+                    resolve({ type: "location", code: match[1] });
+                } else if (data.includes("VPN")) {
+                    resolve({ type: "VPN" });
+                } else if (data.includes("Request")) {
+                    resolve({ type: "Request" });
+                } else {
+                    resolve({ type: "Unknown" });
+                }
+            });
+        });
+    };
+
+    // 定義網頁和客戶端的 URL
+    const webURL = 'https://chat.openai.com/cdn-cgi/trace';
+    const clientURL = 'https://android.chat.openai.com/cdn-cgi/trace';
+
+    try {
+        // 同時檢測兩個 URL
+        const webStatus = await checkEndpoint(webURL);
+        const clientStatus = await checkEndpoint(clientURL);
+
+        // 根據檢測結果返回狀態
+        if (webStatus.type === "location") {
+            if (clientStatus.type === "VPN") {
+                return `ChatGPT ➟ ⚠️\u2009仅解锁网页 (${webStatus.code})`;
+            } else if (clientStatus.type === "Request") {
+                return `ChatGPT ➟ ✅\u2009完整解锁 (网页+客户端) (${webStatus.code})`;
+            }
         }
-        return 'ChatGPT ➟ ❌\u2009';
+        return 'ChatGPT ➟ ❌\u2009无法解锁';
     } catch (error) {
         return 'ChatGPT ➟ N/A';
     }
 }
-
 
 
 // 檢測 YouTube Premium
