@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.16
+修改日期：2024.10.1
  ----------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -110,107 +110,71 @@ function getArgs() {
 
 
 
-// 檢測 ChatGPT 的網頁和 iOS 客戶端
 async function check_chatgpt() {
-  let check_result = 'ChatGPT ➟ ';
-
-  // 檢查網頁版
-  let inner_check_web = () => {
+  let inner_check = () => {
     return new Promise((resolve, reject) => {
-      let option = {
-        url: 'http://chat.openai.com/cdn-cgi/trace',
-        headers: REQUEST_HEADERS,
-      };
-      $httpClient.get(option, function(error, response, data) {
-        if (error || response.status !== 200) {
-          reject('Error');
-          return;
-        }
+      let options = [
+        {
+          url: 'https://chat.openai.com/cdn-cgi/trace',
+          headers: REQUEST_HEADERS,
+        },
+        {
+          url: 'https://android.chat.openai.com/cdn-cgi/trace',
+          headers: REQUEST_HEADERS,
+        },
+      ];
 
-        let lines = data.split("\n");
-        let cf = lines.reduce((acc, line) => {
-          let [key, value] = line.split("=");
-          acc[key] = value;
-          return acc;
-        }, {});
+      Promise.all(options.map(option => {
+        return new Promise((resolve, reject) => {
+          $httpClient.get(option, function (error, response, data) {
+            if (error != null || response.status !== 200) {
+              resolve('Error');
+              return;
+            }
 
-        let country_code = cf.loc;
-        let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
-        if (restricted_countries.includes(country_code)) {
-          resolve('Not Available');
+            let lines = data.split("\n");
+            let cf = lines.reduce((acc, line) => {
+              let [key, value] = line.split("=");
+              acc[key] = value;
+              return acc;
+            }, {});
+
+            let country_code = cf.loc;
+            let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
+
+            if (restricted_countries.includes(country_code)) {
+              resolve('Not Available');
+            } else {
+              resolve(country_code.toUpperCase());
+            }
+          });
+        });
+      })).then(results => {
+        let webResult = results[0];
+        let clientResult = results[1];
+
+        if (webResult === 'Not Available' && clientResult === 'Not Available') {
+          resolve('❌\u2009');
+        } else if (webResult !== 'Not Available' && clientResult !== 'Not Available') {
+          resolve('✅\u2009' + webResult);
+        } else if (webResult !== 'Not Available' && clientResult === 'Not Available') {
+          resolve('⚠️\u2009' + webResult);
         } else {
-          resolve(country_code.toUpperCase());
+          resolve('N/A\u2009');
         }
+      }).catch(error => {
+        resolve('N/A\u2009');
       });
     });
   };
 
-  // 檢查 iOS 版
-  let inner_check_ios = () => {
-    return new Promise((resolve, reject) => {
-      let option = {
-        url: 'https://android.chat.openai.com/cdn-cgi/trace',  // 假設用來檢查 iOS 客戶端
-        headers: REQUEST_HEADERS,
-      };
-      $httpClient.get(option, function(error, response, data) {
-        if (error || response.status !== 200) {
-          reject('Error');
-          return;
-        }
-
-        let lines = data.split("\n");
-        let cf = lines.reduce((acc, line) => {
-          let [key, value] = line.split("=");
-          acc[key] = value;
-          return acc;
-        }, {});
-
-        let country_code = cf.loc;
-        let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
-        if (restricted_countries.includes(country_code)) {
-          resolve('Not Available');
-        } else {
-          resolve(country_code.toUpperCase());
-        }
-      });
-    });
-  };
-
-  let web_code, ios_code;
-
-  // 檢查網頁版
-  await inner_check_web()
-    .then((code) => {
-      web_code = code;
-    })
-    .catch(() => {
-      web_code = 'N/A';  // 如果網頁檢查失敗
-    });
-
-  // 檢查 iOS 客戶端
-  await inner_check_ios()
-    .then((code) => {
-      ios_code = code;
-    })
-    .catch(() => {
-      ios_code = 'N/A';  // 如果 iOS 檢查失敗
-    });
-
-  // 根據結果返回相應的符號
-  if (web_code === 'N/A' || ios_code === 'N/A') {
-    check_result += 'N/A';  // 如果有一個檢查失敗
-  } else if (web_code !== 'Not Available' && ios_code !== 'Not Available') {
-    check_result += '✅\u2009' + web_code;  // 網頁和 iOS 客戶端都可用
-  } else if (web_code !== 'Not Available' && ios_code === 'Not Available') {
-    check_result += '⚠️\u2009' + web_code;  // 只有網頁可用
-  } else if (web_code === 'Not Available' && ios_code === 'Not Available') {
-    check_result += '❌\u2009';  // 兩者都無法使用
-  }
+  let check_result = 'ChatGPT\u2009➟ ';
+  await inner_check().then(result => {
+    check_result += result;
+  });
 
   return check_result;
 }
-
-
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
