@@ -109,40 +109,82 @@ function getArgs() {
 }
 
 
-// 檢測 ChatGPT
 async function check_chatgpt() {
-    let inner_check = () => {
+    let webCheck = () => {
         return new Promise((resolve, reject) => {
-            Promise.all([
-                $httpClient.get({url: 'https://chat.openai.com', headers: REQUEST_HEADERS}), 
-                $httpClient.get({url: 'https://android.chat.openai.com', headers: REQUEST_HEADERS})
-            ]).then(([gpt1, gpt2]) => {
-                if (gpt1.error || gpt1.response.status !== 200 || 
-                    gpt2.error || gpt2.response.status !== 200) {
+            let option = {
+                url: 'http://chat.openai.com',
+                headers: REQUEST_HEADERS,
+            };
+
+            $httpClient.get(option, function(error, response, data) {
+                if (error != null || response.status !== 200) {
                     reject('Error');
-                } else {
-                    let result1 = gpt1.data.indexOf('location') !== -1;
-                    let result2 = gpt2.data.indexOf('VPN') !== -1;
-                    
-                    if (result1 && !result2) {
-                        resolve('✅ Web+App');
-                    } else if (result1 && result2) {
-                        resolve('⚠️ Web Only');  
-                    } else {
-                        resolve('❌ None');
-                    }
+                    return;
                 }
-            }).catch(error => reject('N/A'));
+
+                let lines = data.split("\n");
+                let cf = lines.reduce((acc, line) => {
+                    let [key, value] = line.split("=");
+                    acc[key] = value;
+                    return acc;
+                }, {});
+                
+                if (cf.loc.includes("location")) {
+                    resolve('location');
+                } else if (cf.loc.includes("VPN")) {
+                    resolve('VPN');
+                } else {
+                    resolve('N/A');
+                }
+            });
         });
+    };
+
+    let clientCheck = () => {
+        return new Promise((resolve, reject) => {
+            let option = {
+                url: 'https://android.chat.openai.com',
+                headers: REQUEST_HEADERS,
+            };
+
+            $httpClient.get(option, function(error, response, data) {
+                if (error != null || response.status !== 200) {
+                    reject('Error');
+                    return;
+                }
+
+                if (data.includes("Request")) {
+                    resolve('Request');
+                } else if (data.includes("VPN")) {
+                    resolve('VPN');
+                } else {
+                    resolve('N/A');
+                }
+            });
+        });
+    };
+
+    let check_result = '';
+
+    try {
+        const [webResult, clientResult] = await Promise.all([webCheck(), clientCheck()]);
+        
+        if (webResult === 'location' && clientResult === 'Request') {
+            check_result = 'ChatGPT ➟ ✅';
+        } else if (webResult === 'location' && clientResult === 'VPN') {
+            check_result = 'ChatGPT ➟ ⚠️';
+        } else if (webResult === 'VPN') {
+            check_result = 'ChatGPT ➟ ❌';
+        } else {
+            check_result = 'ChatGPT ➟ N/A';
+        }
+    } catch (error) {
+        check_result = 'ChatGPT ➟ N/A';
     }
-    
-    let check_result = 'ChatGPT ➟ ';
-    await inner_check()
-        .then(status => check_result += status)
-        .catch(error => check_result += error);
+
     return check_result;
 }
-
 
 
 // 檢測 YouTube Premium
