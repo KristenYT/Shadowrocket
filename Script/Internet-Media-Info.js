@@ -110,43 +110,105 @@ function getArgs() {
 
 
 
-async function check_app_gpt() {
-  let check_app = () => {
+// 檢測 ChatGPT for both Web and iOS with N/A result for errors or timeouts
+async function check_chatgpt() {
+  let check_result = 'ChatGPT ➟ ';
+
+  // Inner function to check web version
+  let inner_check_web = () => {
     return new Promise((resolve, reject) => {
       let option = {
-        url: 'https://api.openai.com/v1/engines',
+        url: 'http://chat.openai.com/cdn-cgi/trace',
         headers: REQUEST_HEADERS,
-      }
-      $httpClient.get(option, function (error, response, data) {
-        if (error != null || response.status !== 200) {
-          console.log('App access error:', error || response.status); // 輸出錯誤信息
+      };
+      $httpClient.get(option, function(error, response, data) {
+        if (error || response.status !== 200) {
           reject('Error');
           return;
         }
 
-        resolve('App Unlocked'); // App 可以訪問
-      })
-    })
-  }
+        let lines = data.split("\n");
+        let cf = lines.reduce((acc, line) => {
+          let [key, value] = line.split("=");
+          acc[key] = value;
+          return acc;
+        }, {});
 
-  let result = '';
-  await check_app()
-    .then((status) => {
-      result = 'ChatGPT App ➟ \u2611 可以訪問';
+        let country_code = cf.loc;
+        let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
+        if (restricted_countries.includes(country_code)) {
+          resolve('Not Available');
+        } else {
+          resolve(country_code.toUpperCase());
+        }
+      });
+    });
+  };
+
+  // Inner function to check iOS version (mock iOS request)
+  let inner_check_ios = () => {
+    return new Promise((resolve, reject) => {
+      let option = {
+        url: 'https://ios.chat.openai.com/cdn-cgi/trace', // Hypothetical URL for iOS app
+        headers: REQUEST_HEADERS,
+      };
+      $httpClient.get(option, function(error, response, data) {
+        if (error || response.status !== 200) {
+          reject('Error');
+          return;
+        }
+
+        let lines = data.split("\n");
+        let cf = lines.reduce((acc, line) => {
+          let [key, value] = line.split("=");
+          acc[key] = value;
+          return acc;
+        }, {});
+
+        let country_code = cf.loc;
+        let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
+        if (restricted_countries.includes(country_code)) {
+          resolve('Not Available');
+        } else {
+          resolve(country_code.toUpperCase());
+        }
+      });
+    });
+  };
+
+  // Check both Web and iOS versions
+  let web_code, ios_code;
+
+  await inner_check_web()
+    .then((code) => {
+      web_code = code;
     })
-    .catch((error) => {
-      console.log('App check error:', error); // 調試信息
-      result = 'ChatGPT App ➟ N/A';
+    .catch(() => {
+      web_code = 'N/A';  // Mark as N/A if web check fails
     });
 
-  return result;
+  await inner_check_ios()
+    .then((code) => {
+      ios_code = code;
+    })
+    .catch(() => {
+      ios_code = 'N/A';  // Mark as N/A if iOS check fails
+    });
+
+  // Determine final result based on both checks
+  if (web_code === 'N/A' || ios_code === 'N/A') {
+    check_result += 'N/A';  // At least one check failed or timed out
+  } else if (web_code !== 'Not Available' && ios_code !== 'Not Available') {
+    check_result += '✅\u2009' + web_code;  // Both web and iOS are available
+  } else if (web_code !== 'Not Available' && ios_code === 'Not Available') {
+    check_result += '⚠️\u2009' + web_code;  // Only web is available
+  } else if (web_code === 'Not Available' && ios_code === 'Not Available') {
+    check_result += '❌\u2009';  // Neither is available
+  }
+
+  return check_result;
 }
 
-// 測試 App 版解鎖
-(async () => {
-  let result = await check_app_gpt();
-  console.log(result); // 輸出結果
-})();
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
