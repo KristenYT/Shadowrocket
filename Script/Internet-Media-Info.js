@@ -110,41 +110,7 @@ function getArgs() {
 
 
 
-// 修改後的 ChatGPT 解鎖檢測函數，增加錯誤調試信息
-async function check_chatgpt() {
-  // 檢測網頁訪問狀態
-  let check_web = () => {
-    return new Promise((resolve, reject) => {
-      let option = {
-        url: 'http://chat.openai.com/cdn-cgi/trace',
-        headers: REQUEST_HEADERS,
-      }
-      $httpClient.get(option, function (error, response, data) {
-        if (error != null || response.status !== 200) {
-          console.log('Web access error:', error || response.status); // 輸出錯誤信息
-          reject('Error');
-          return;
-        }
-
-        let lines = data.split("\n");
-        let cf = lines.reduce((acc, line) => {
-          let [key, value] = line.split("=");
-          acc[key] = value;
-          return acc;
-        }, {});
-
-        let country_code = cf.loc;
-        let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
-        if (restricted_countries.includes(country_code)) {
-          resolve('Not Available'); // 無法訪問
-        } else {
-          resolve(country_code.toUpperCase()); // 可以訪問
-        }
-      })
-    })
-  }
-
-  // 檢測 App 訪問狀態
+async function check_app_gpt() {
   let check_app = () => {
     return new Promise((resolve, reject) => {
       let option = {
@@ -163,29 +129,24 @@ async function check_chatgpt() {
     })
   }
 
-  let check_result = 'ChatGPT\u2009➟ ';
-
-  // 同時檢測網頁和 App
-  await Promise.all([check_web(), check_app()])
-    .then((results) => {
-      const [webStatus, appStatus] = results;
-      if (webStatus === 'Not Available' && appStatus === 'App Unlocked') {
-        check_result += '\u2612 只能訪問 App';
-      } else if (webStatus === 'Not Available' && appStatus === 'Not Available') {
-        check_result += '\u2612 無法訪問網頁和 App';
-      } else if (webStatus !== 'Not Available' && appStatus === 'App Unlocked') {
-        check_result += '\u2611 網頁和 App 完整解鎖';
-      } else if (webStatus !== 'Not Available' && appStatus !== 'App Unlocked') {
-        check_result += '\u2611 只能訪問網頁';
-      }
+  let result = '';
+  await check_app()
+    .then((status) => {
+      result = 'ChatGPT App ➟ \u2611 可以訪問';
     })
     .catch((error) => {
-      console.log('Error in Promise.all:', error); // 調試信息，顯示捕獲的錯誤
-      check_result += 'N/A'; // 若發生錯誤
-    })
+      console.log('App check error:', error); // 調試信息
+      result = 'ChatGPT App ➟ N/A';
+    });
 
-  return check_result;
+  return result;
 }
+
+// 測試 App 版解鎖
+(async () => {
+  let result = await check_app_gpt();
+  console.log(result); // 輸出結果
+})();
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
