@@ -140,10 +140,10 @@ async function check_chatgpt() {
         });
     }
 
-    let inner_check_android = () => {
+    let inner_check_ios = () => {
         return new Promise((resolve, reject) => {
             let option = {
-                url: 'https://android.chat.openai.com',
+                url: 'https://ios.chat.openai.com',
                 headers: REQUEST_HEADERS,
             }
             $httpClient.get(option, function(error, response, data) {
@@ -166,12 +166,12 @@ async function check_chatgpt() {
     let check_result = 'ChatGPT\u2009➟ ';
 
     try {
-        const [webResult, androidResult] = await Promise.all([inner_check_web(), inner_check_android()]);
+        const [webResult, iosResult] = await Promise.all([inner_check_web(), inner_check_ios()]);
 
         // 根据检测结果生成最终返回内容
-        if (webResult.status === 'Available' && androidResult === 'Client Available') {
+        if (webResult.status === 'Available' && iosResult === 'Client Available') {
             check_result += `✅\u2009${webResult.region}`;
-        } else if (webResult.status === 'Available' && androidResult === 'Client Not Available') {
+        } else if (webResult.status === 'Available' && iosResult === 'Client Not Available') {
             check_result += `⚠️\u2009${webResult.region}`;
         } else {
             check_result += '❌';
