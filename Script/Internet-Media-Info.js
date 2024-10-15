@@ -6,6 +6,8 @@
 const REQUEST_HEADERS = { 
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36',
     'Accept-Language': 'en',
+    'Accept': '*/*', // 添加 Accept 頭
+    'Referer': 'https://chat.openai.com/', // 添加 Referer 頭
 };
 
 const STATUS_COMING = 2; // 即將登陸
