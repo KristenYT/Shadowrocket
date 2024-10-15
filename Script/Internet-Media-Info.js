@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.166
+修改日期：2024.10.16
  ---------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -109,7 +109,6 @@ function getArgs() {
 }
 
 
-
 // 檢測 ChatGPT (更新後)
 async function check_chatgpt() {
     // 定義內部檢測函數
@@ -121,6 +120,7 @@ async function check_chatgpt() {
             };
             $httpClient.get(options, (error, response, data) => {
                 if (error || response.status !== 200) {
+                    console.log(`Error accessing ${url}: ${error || response.status}`);
                     reject('N/A');
                     return;
                 }
@@ -149,16 +149,19 @@ async function check_chatgpt() {
         const webStatus = await checkEndpoint(webURL);
         const clientStatus = await checkEndpoint(clientURL);
 
+        console.log(`Web status: ${JSON.stringify(webStatus)}, Client status: ${JSON.stringify(clientStatus)}`);
+
         // 根據檢測結果返回狀態
         if (webStatus.type === "location") {
             if (clientStatus.type === "VPN") {
-                return `ChatGPT ➟ ⚠️\u2009仅解锁网页 (${webStatus.code})`;
+                return `ChatGPT ➟ ⚠️\u2009(${webStatus.code})`;
             } else if (clientStatus.type === "Request") {
-                return `ChatGPT ➟ ✅\u2009完整解锁 (网页+客户端) (${webStatus.code})`;
+                return `ChatGPT ➟ ✅\u2009(${webStatus.code})`;
             }
         }
-        return 'ChatGPT ➟ ❌\u2009无法解锁';
+        return 'ChatGPT ➟ ❌\u2009';
     } catch (error) {
+        console.log(`Detection failed: ${error}`);
         return 'ChatGPT ➟ N/A';
     }
 }
