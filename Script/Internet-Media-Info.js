@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.16
+修改日期：2024.10.166
  ---------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -109,62 +109,40 @@ function getArgs() {
 }
 
 
-// 檢測 ChatGPT (更新後)
+// 檢測 ChatGPT
 async function check_chatgpt() {
-    // 定義內部檢測函數
-    const checkEndpoint = (url) => {
+    let inner_check = () => {
         return new Promise((resolve, reject) => {
-            const options = {
-                url: url,
-                headers: REQUEST_HEADERS,
-            };
-            $httpClient.get(options, (error, response, data) => {
-                if (error || response.status !== 200) {
-                    console.log(`Error accessing ${url}: ${error || response.status}`);
-                    reject('N/A');
-                    return;
-                }
-
-                // 提取地區代碼和其他關鍵詞判斷
-                let match = data.match(/loc=([A-Z]{2})/); // 提取地區代碼
-                if (match) {
-                    resolve({ type: "location", code: match[1] });
-                } else if (data.includes("VPN")) {
-                    resolve({ type: "VPN" });
-                } else if (data.includes("Request")) {
-                    resolve({ type: "Request" });
+            Promise.all([
+                $httpClient.get({url: 'https://chat.openai.com', headers: REQUEST_HEADERS}), 
+                $httpClient.get({url: 'https://android.chat.openai.com', headers: REQUEST_HEADERS})
+            ]).then(([gpt1, gpt2]) => {
+                if (gpt1.error || gpt1.response.status !== 200 || 
+                    gpt2.error || gpt2.response.status !== 200) {
+                    reject('Error');
                 } else {
-                    resolve({ type: "Unknown" });
+                    let result1 = gpt1.data.indexOf('location') !== -1;
+                    let result2 = gpt2.data.indexOf('VPN') !== -1;
+                    
+                    if (result1 && !result2) {
+                        resolve('✅ Web+App');
+                    } else if (result1 && result2) {
+                        resolve('⚠️ Web Only');  
+                    } else {
+                        resolve('❌ None');
+                    }
                 }
-            });
+            }).catch(error => reject('N/A'));
         });
-    };
-
-    // 定義網頁和客戶端的 URL
-    const webURL = 'https://chat.openai.com/cdn-cgi/trace';
-    const clientURL = 'https://android.chat.openai.com/cdn-cgi/trace';
-
-    try {
-        // 同時檢測兩個 URL
-        const webStatus = await checkEndpoint(webURL);
-        const clientStatus = await checkEndpoint(clientURL);
-
-        console.log(`Web status: ${JSON.stringify(webStatus)}, Client status: ${JSON.stringify(clientStatus)}`);
-
-        // 根據檢測結果返回狀態
-        if (webStatus.type === "location") {
-            if (clientStatus.type === "VPN") {
-                return `ChatGPT ➟ ⚠️\u2009(${webStatus.code})`;
-            } else if (clientStatus.type === "Request") {
-                return `ChatGPT ➟ ✅\u2009(${webStatus.code})`;
-            }
-        }
-        return 'ChatGPT ➟ ❌\u2009';
-    } catch (error) {
-        console.log(`Detection failed: ${error}`);
-        return 'ChatGPT ➟ N/A';
     }
+    
+    let check_result = 'ChatGPT ➟ ';
+    await inner_check()
+        .then(status => check_result += status)
+        .catch(error => check_result += error);
+    return check_result;
 }
+
 
 
 // 檢測 YouTube Premium
