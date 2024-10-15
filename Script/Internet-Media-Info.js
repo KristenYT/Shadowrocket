@@ -110,98 +110,91 @@ function getArgs() {
     );
 }
 
+//
 // 檢測 ChatGPT
-async function WebTest_OpenAI() {
-    const log = (message) => {
-        console.log(message);  // Output detailed log to console
-    };
-
-    const notify = (title, message) => {
-        $notification.post(title, "", message);  // Send detailed notification
-    };
-
-    try {
-        // First request: Check cookie requirements
-        $httpClient.get({
-            url: 'https://api.openai.com/compliance/cookie_requirements',
-            headers: {
-                'authority': 'api.openai.com',
-                'accept': '*/*',
-                'accept-language': 'en-US,en;q=0.9',
-                'authorization': 'Bearer null',
-                'content-type': 'application/json',
-                'origin': 'https://platform.openai.com',
-                'referer': 'https://platform.openai.com/',
-                'sec-ch-ua': '',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'same-site',
-                'user-agent': ''
-            }
-        }, function (error, response, data) {
-            if (error) {
-                log("❌ ChatGPT: Cookie check failed");
-                notify("ChatGPT Status", "❌");
-                return;
-            }
-
-            log("ChatGPT: Cookie request response received.");
-            const cookieRestricted = data.toLowerCase().includes('unsupported_country');
-
-            // Second request: Check client restrictions
+async function check_chatgpt() {
+    // Step 1: Check the OpenAI compliance cookie requirements
+    const check_cookie = () => {
+        return new Promise((resolve, reject) => {
             $httpClient.get({
-                url: 'https://ios.chat.openai.com/',
-                headers: {
-                    'authority': 'ios.chat.openai.com',
-                    'accept': '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                    'accept-language': 'en-US,en;q=0.9',
-                    'sec-ch-ua': '',
-                    'sec-ch-ua-mobile': '?0',
-                    'sec-ch-ua-platform': '"Windows"',
-                    'sec-fetch-dest': 'document',
-                    'sec-fetch-mode': 'navigate',
-                    'sec-fetch-site': 'none',
-                    'sec-fetch-user': '?1',
-                    'upgrade-insecure-requests': '1',
-                    'user-agent': ''
-                }
-            }, function (error2, response2, data2) {
-                if (error2) {
-                    log("❌ ChatGPT: Client check failed");
-                    notify("ChatGPT Status", "❌");
+                url: 'https://api.openai.com/compliance/cookie_requirements',
+                headers: REQUEST_HEADERS,
+            }, function(error, response, data) {
+                if (error != null || response.status !== 200) {
+                    reject('Error');
                     return;
                 }
-
-                log("ChatGPT: Client request response received.");
-                const vpnRestricted = data2.toLowerCase().includes('vpn');
-
-                let result;
-                if (!cookieRestricted && !vpnRestricted) {
-                    const region = "US";  // Replace with actual region detection if needed
-                    result = `✅ ${region}`;
-                } else if (!cookieRestricted && vpnRestricted) {
-                    result = `⚠️ ${region}`;  // Replace with actual region detection if needed
-                } else if (cookieRestricted) {
-                    result = `❌`;
-                } else {
-                    result = `N/A`;
-                }
-
-                log(`ChatGPT Status: ${result}`);
-                notify("ChatGPT Status", result);
+                // Check if the region is unsupported based on cookie data
+                const cookieRestricted = data.toLowerCase().includes('unsupported_country');
+                resolve(cookieRestricted);
             });
         });
+    };
 
+    // Step 2: Check for VPN restrictions on the client side
+    const check_vpn = () => {
+        return new Promise((resolve, reject) => {
+            $httpClient.get({
+                url: 'https://ios.chat.openai.com/',
+                headers: REQUEST_HEADERS,
+            }, function(error, response, data) {
+                if (error != null || response.status !== 200) {
+                    reject('Error');
+                    return;
+                }
+                // Check if there's a VPN restriction in the response data
+                const vpnRestricted = data.toLowerCase().includes('vpn');
+                resolve(vpnRestricted);
+            });
+        });
+    };
+
+    // Step 3: Get region information from cdn-cgi trace
+    const check_region = () => {
+        return new Promise((resolve, reject) => {
+            let option = {
+                url: 'https://chat.openai.com/cdn-cgi/trace',
+                headers: REQUEST_HEADERS,
+            };
+            $httpClient.get(option, function(error, response, data) {
+                if (error != null || response.status !== 200) {
+                    reject('Error');
+                    return;
+                }
+                // Parse the trace data and extract the region
+                let lines = data.split("\n");
+                let cf = lines.reduce((acc, line) => {
+                    let [key, value] = line.split("=");
+                    acc[key] = value;
+                    return acc;
+                }, {});
+                let region = cf.loc;
+                resolve(region ? region.toUpperCase() : 'N/A');
+            });
+        });
+    };
+
+    let result = 'ChatGPT\u2009➟ ';
+    
+    try {
+        const [cookieRestricted, vpnRestricted, region] = await Promise.all([check_cookie(), check_vpn(), check_region()]);
+
+        // Logic to determine final status based on the checks
+        if (!cookieRestricted && !vpnRestricted) {
+            result += `✅\u2009${region}`;
+        } else if (!cookieRestricted && vpnRestricted) {
+            result += `⚠️\u2009${region}`;
+        } else if (cookieRestricted) {
+            result += '❌';
+        } else {
+            result += 'N/A';
+        }
     } catch (error) {
-        log(`N/A: Detection failed (${error.message})`);
-        notify("ChatGPT Status", "N/A");
+        result += 'N/A';
     }
-}
 
-// Call the function
-WebTest_OpenAI();
+    return result;
+}
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
