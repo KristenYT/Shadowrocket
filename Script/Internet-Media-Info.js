@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.16
+修改日期：2024.10.166
  ---------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -114,14 +114,14 @@ async function check_chatgpt() {
 
   // 檢查網頁訪問
   let inner_check_web = () => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       let option = {
         url: 'http://chat.openai.com/cdn-cgi/trace',
         headers: REQUEST_HEADERS,
       };
       $httpClient.get(option, function(error, response, data) {
         if (error != null || response.status !== 200) {
-          reject('Error'); // 無法檢測或超時
+          resolve({ status: 'N/A', region: null }); // 無法檢測或超時
           return;
         }
 
@@ -145,14 +145,14 @@ async function check_chatgpt() {
 
   // 檢查 Android 訪問
   let check_android_chatgpt = () => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       let option = {
         url: 'https://android.chat.openai.com',
         headers: REQUEST_HEADERS,
       };
       $httpClient.get(option, function(error, response, data) {
         if (error != null || response.status !== 200) {
-          reject('Error'); // 無法檢測或超時
+          resolve('N/A'); // 無法檢測或超時
           return;
         }
         if (data.includes('Request')) {
@@ -168,8 +168,12 @@ async function check_chatgpt() {
 
   try {
     // 並行檢查網頁和 Android 訪問
-    let [web_result, android_result] = await Promise.all([inner_check_web(), check_android_chatgpt()]);
+    let [web_result, android_result] = await Promise.all([
+      inner_check_web().catch(() => ({ status: 'N/A', region: null })), // 捕捉網頁檢查錯誤
+      check_android_chatgpt().catch(() => 'N/A') // 捕捉 Android 檢查錯誤
+    ]);
 
+    // 整合檢查結果
     if (web_result.status === '✅' && android_result === '✅') {
       check_result += '✅ ' + web_result.region; // 網頁和 Android 都可訪問
     } else if (web_result.status === '✅' && android_result === '⚠️') {
@@ -180,7 +184,7 @@ async function check_chatgpt() {
       check_result += 'N/A'; // 無法檢測或超時
     }
   } catch (error) {
-    check_result += 'N/A'; // 捕捉錯誤或超時情況
+    check_result += 'N/A'; // 捕捉未知錯誤情況
   }
 
   return check_result;
