@@ -110,82 +110,78 @@ function getArgs() {
 
 // 檢測 ChatGPT
 async function check_chatgpt() {
-  let inner_check = () => {
-    return new Promise((resolve, reject) => {
-      let option = {
-        url: 'http://chat.openai.com/cdn-cgi/trace',
-        headers: REQUEST_HEADERS,
-      };
-      $httpClient.get(option, function (error, response, data) {
-        if (error != null || response.status !== 200) {
-          console.error("Inner check error:", error || `Status: ${response.status}`);
-          reject('Error');
-          return;
-        }
+    let inner_check_web = () => {
+        return new Promise((resolve, reject) => {
+            let option = {
+                url: 'http://chat.openai.com/cdn-cgi/trace',
+                headers: REQUEST_HEADERS,
+            }
+            $httpClient.get(option, function(error, response, data) {
+                if (error != null || response.status !== 200) {
+                    reject('Error');
+                    return;
+                }
 
-        let lines = data.split("\n");
-        let cf = lines.reduce((acc, line) => {
-          let [key, value] = line.split("=");
-          acc[key] = value;
-          return acc;
-        }, {});
+                let lines = data.split("\n");
+                let cf = lines.reduce((acc, line) => {
+                    let [key, value] = line.split("=");
+                    acc[key] = value;
+                    return acc;
+                }, {});
 
-        let country_code = cf.loc;
-        let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
-        if (restricted_countries.includes(country_code)) {
-          resolve({ web: '❌', country: country_code });
-        } else {
-          resolve({ web: '✅', country: country_code });
-        }
-      });
-    });
-  };
-
-  let check_android_client = () => {
-    return new Promise((resolve, reject) => {
-      let option = {
-        url: 'https://android.chat.openai.com',
-        headers: REQUEST_HEADERS,
-      };
-      $httpClient.get(option, function (error, response, data) {
-        if (error != null || response.status !== 200) {
-          console.error("Android client check error:", error || `Status: ${response.status}`);
-          reject('Error');
-          return;
-        }
-
-        if (data.includes("Request")) {
-          resolve('✅');
-        } else if (data.includes("VPN")) {
-          resolve('❌');
-        } else {
-          resolve('N/A');
-        }
-      });
-    });
-  };
-
-  let check_result = 'ChatGPT\u2009➟ ';
-
-  try {
-    const webStatus = await inner_check();
-    const androidStatus = await check_android_client();
-
-    if (webStatus.web === '✅' && androidStatus === '✅') {
-      check_result += `✅ ${webStatus.country.toUpperCase()}`;
-    } else if (webStatus.web === '✅' && androidStatus === '❌') {
-      check_result += `⚠️ ${webStatus.country.toUpperCase()}`;
-    } else {
-      check_result += '❌';
+                let country_code = cf.loc;
+                let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
+                if (restricted_countries.includes(country_code)) {
+                    resolve({ status: 'Not Available', region: '' });
+                } else {
+                    resolve({ status: 'Available', region: country_code.toUpperCase() });
+                }
+            });
+        });
     }
-  } catch (error) {
-    console.error("Check error:", error);
-    check_result += 'N/A';
-  }
 
-  return check_result;
+    let inner_check_android = () => {
+        return new Promise((resolve, reject) => {
+            let option = {
+                url: 'https://android.chat.openai.com',
+                headers: REQUEST_HEADERS,
+            }
+            $httpClient.get(option, function(error, response, data) {
+                if (error != null || response.status !== 200) {
+                    reject('Error');
+                    return;
+                }
+
+                if (data.includes("Request")) {
+                    resolve('Client Available');
+                } else if (data.includes("VPN")) {
+                    resolve('Client Not Available');
+                } else {
+                    resolve('Client Unknown');
+                }
+            });
+        });
+    }
+
+    let check_result = 'ChatGPT\u2009➟ ';
+
+    try {
+        const [webResult, androidResult] = await Promise.all([inner_check_web(), inner_check_android()]);
+
+        // 根据检测结果生成最终返回内容
+        if (webResult.status === 'Available' && androidResult === 'Client Available') {
+            check_result += `✅\u2009${webResult.region}`;
+        } else if (webResult.status === 'Available') {
+            check_result += `⚠️\u2009${webResult.region}`;
+        } else {
+            check_result += '❌';
+        }
+    } catch (error) {
+        check_result += 'N/A';
+    }
+
+    return check_result;
 }
-
 
 
 // 檢測 YouTube Premium
