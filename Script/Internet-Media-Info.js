@@ -113,7 +113,7 @@ async function check_chatgpt() {
     let inner_check_web = () => {
         return new Promise((resolve, reject) => {
             let option = {
-                url: 'http://chat.openai.com/cdn-cgi/trace',
+                url: 'https://chat.openai.com/cdn-cgi/trace',
                 headers: REQUEST_HEADERS,
             }
             $httpClient.get(option, function(error, response, data) {
