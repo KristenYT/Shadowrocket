@@ -110,11 +110,11 @@ function getArgs() {
 
 
 
-// 檢測 ChatGPT for both Web and iOS with proper handling for ⚠️ result
+// 檢測 ChatGPT 的網頁和 iOS 客戶端
 async function check_chatgpt() {
   let check_result = 'ChatGPT ➟ ';
 
-  // Inner function to check web version
+  // 檢查網頁版
   let inner_check_web = () => {
     return new Promise((resolve, reject) => {
       let option = {
@@ -145,11 +145,11 @@ async function check_chatgpt() {
     });
   };
 
-  // Inner function to check iOS version (mock iOS request)
+  // 檢查 iOS 版
   let inner_check_ios = () => {
     return new Promise((resolve, reject) => {
       let option = {
-        url: 'https://ios.chat.openai.com/cdn-cgi/trace', // Hypothetical URL for iOS app
+        url: 'https://android.chat.openai.com/cdn-cgi/trace',  // 假設用來檢查 iOS 客戶端
         headers: REQUEST_HEADERS,
       };
       $httpClient.get(option, function(error, response, data) {
@@ -176,36 +176,35 @@ async function check_chatgpt() {
     });
   };
 
-  // Check both Web and iOS versions
   let web_code, ios_code;
 
-  // Check web version
+  // 檢查網頁版
   await inner_check_web()
     .then((code) => {
       web_code = code;
     })
     .catch(() => {
-      web_code = 'N/A';  // Mark as N/A if web check fails
+      web_code = 'N/A';  // 如果網頁檢查失敗
     });
 
-  // Check iOS version
+  // 檢查 iOS 客戶端
   await inner_check_ios()
     .then((code) => {
       ios_code = code;
     })
     .catch(() => {
-      ios_code = 'N/A';  // Mark as N/A if iOS check fails
+      ios_code = 'N/A';  // 如果 iOS 檢查失敗
     });
 
-  // Determine final result based on both checks
+  // 根據結果返回相應的符號
   if (web_code === 'N/A' || ios_code === 'N/A') {
-    check_result += 'N/A';  // At least one check failed or timed out
+    check_result += 'N/A';  // 如果有一個檢查失敗
   } else if (web_code !== 'Not Available' && ios_code !== 'Not Available') {
-    check_result += '✅\u2009' + web_code;  // Both web and iOS are available
+    check_result += '✅\u2009' + web_code;  // 網頁和 iOS 客戶端都可用
   } else if (web_code !== 'Not Available' && ios_code === 'Not Available') {
-    check_result += '⚠️\u2009' + web_code;  // Only web is available, iOS is not
+    check_result += '⚠️\u2009' + web_code;  // 只有網頁可用
   } else if (web_code === 'Not Available' && ios_code === 'Not Available') {
-    check_result += '❌\u2009';  // Neither is available
+    check_result += '❌\u2009';  // 兩者都無法使用
   }
 
   return check_result;
