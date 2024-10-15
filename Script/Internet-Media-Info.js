@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.16
+修改日期：2024.10.166
  ----------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -112,60 +112,57 @@ function getArgs() {
 
 // 檢測 ChatGPT (更新後)
 async function check_chatgpt() {
-    let inner_check = (url) => {
+    // 定義內部檢測函數
+    const checkEndpoint = (url) => {
         return new Promise((resolve, reject) => {
-            let option = {
+            const options = {
                 url: url,
                 headers: REQUEST_HEADERS,
-            }
-            $httpClient.get(option, function (error, response, data) {
-                if (error != null || response.status !== 200) {
-                    reject('Error');
+            };
+            $httpClient.get(options, (error, response, data) => {
+                if (error || response.status !== 200) {
+                    reject('N/A');
                     return;
                 }
 
-                let lines = data.split("\n");
-                let cf = lines.reduce((acc, line) => {
-                    let [key, value] = line.split("=");
-                    acc[key] = value;
-                    return acc;
-                }, {});
-
-                let country_code = cf.loc;
-                let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
-                if (restricted_countries.includes(country_code)) {
-                    resolve('Not Available');
+                // 檢測返回數據中是否包含關鍵字
+                if (data.includes("location")) {
+                    const match = data.match(/loc=([A-Z]{2})/); // 提取地區代碼
+                    resolve(match ? match[1] : "Unknown");
+                } else if (data.includes("VPN")) {
+                    resolve("VPN");
+                } else if (data.includes("Request")) {
+                    resolve("Request");
                 } else {
-                    resolve('Available');
+                    resolve("Unknown");
                 }
             });
         });
-    }
+    };
 
-    let check_result = 'ChatGPT\u2009➟ ';
-    let gptWeb = 'https://chat.openai.com/cdn-cgi/trace';
-    let gptClient = 'https://android.chat.openai.com/cdn-cgi/trace';
-
-    let webStatus, clientStatus;
+    // 定義網頁和客戶端的 URL
+    const webURL = 'https://chat.openai.com/cdn-cgi/trace';
+    const clientURL = 'https://android.chat.openai.com/cdn-cgi/trace';
 
     try {
-        webStatus = await inner_check(gptWeb);
-        clientStatus = await inner_check(gptClient);
+        // 同時檢測兩個 URL
+        const webStatus = await checkEndpoint(webURL);
+        const clientStatus = await checkEndpoint(clientURL);
+
+        // 根據檢測結果返回狀態
+        if (webStatus !== "Unknown" && webStatus !== "VPN") {
+            if (clientStatus === "VPN") {
+                return `ChatGPT ➟ ⚠️\u2009(${webStatus})`;
+            } else if (clientStatus === "Request") {
+                return `ChatGPT ➟ ✅\u2009(${webStatus})`;
+            }
+        }
+        return 'ChatGPT ➟ ❌\u2009';
     } catch (error) {
-        check_result += 'N/A';
-        return check_result;
+        return 'ChatGPT ➟ N/A';
     }
-
-    if (webStatus === 'Available' && clientStatus === 'Available') {
-        check_result += '✅\u2009';
-    } else if (webStatus === 'Available' && clientStatus !== 'Available') {
-        check_result += '⚠️\u2009';
-    } else {
-        check_result += '❌\u2009';
-    }
-
-    return check_result;
 }
+
 
 
 // 檢測 YouTube Premium
