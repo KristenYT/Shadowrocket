@@ -171,7 +171,7 @@ async function check_chatgpt() {
         // 根据检测结果生成最终返回内容
         if (webResult.status === 'Available' && androidResult === 'Client Available') {
             check_result += `✅\u2009${webResult.region}`;
-        } else if (webResult.status === 'Available') {
+        } else if (webResult.status === 'Available' && androidResult === 'Client Not Available') {
             check_result += `⚠️\u2009${webResult.region}`;
         } else {
             check_result += '❌';
@@ -182,7 +182,6 @@ async function check_chatgpt() {
 
     return check_result;
 }
-
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
