@@ -1,6 +1,6 @@
 /*
 脚本修改自 @CyWr110 , @githubdulong
-修改日期：2024.10.1
+修改日期：2024.10.16
  ----------------------------------------
  */
 const REQUEST_HEADERS = { 
@@ -110,71 +110,63 @@ function getArgs() {
 
 
 
+// 檢測 ChatGPT (更新後)
 async function check_chatgpt() {
-  let inner_check = () => {
-    return new Promise((resolve, reject) => {
-      let options = [
-        {
-          url: 'https://chat.openai.com/cdn-cgi/trace',
-          headers: REQUEST_HEADERS,
-        },
-        {
-          url: 'https://android.chat.openai.com/cdn-cgi/trace',
-          headers: REQUEST_HEADERS,
-        },
-      ];
-
-      Promise.all(options.map(option => {
+    let inner_check = (url) => {
         return new Promise((resolve, reject) => {
-          $httpClient.get(option, function (error, response, data) {
-            if (error != null || response.status !== 200) {
-              resolve('Error');
-              return;
+            let option = {
+                url: url,
+                headers: REQUEST_HEADERS,
             }
+            $httpClient.get(option, function (error, response, data) {
+                if (error != null || response.status !== 200) {
+                    reject('Error');
+                    return;
+                }
 
-            let lines = data.split("\n");
-            let cf = lines.reduce((acc, line) => {
-              let [key, value] = line.split("=");
-              acc[key] = value;
-              return acc;
-            }, {});
+                let lines = data.split("\n");
+                let cf = lines.reduce((acc, line) => {
+                    let [key, value] = line.split("=");
+                    acc[key] = value;
+                    return acc;
+                }, {});
 
-            let country_code = cf.loc;
-            let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
-
-            if (restricted_countries.includes(country_code)) {
-              resolve('Not Available');
-            } else {
-              resolve(country_code.toUpperCase());
-            }
-          });
+                let country_code = cf.loc;
+                let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];
+                if (restricted_countries.includes(country_code)) {
+                    resolve('Not Available');
+                } else {
+                    resolve('Available');
+                }
+            });
         });
-      })).then(results => {
-        let webResult = results[0];
-        let clientResult = results[1];
+    }
 
-        if (webResult === 'Not Available' && clientResult === 'Not Available') {
-          resolve('❌\u2009');
-        } else if (webResult !== 'Not Available' && clientResult !== 'Not Available') {
-          resolve('✅\u2009' + webResult);
-        } else if (webResult !== 'Not Available' && clientResult === 'Not Available') {
-          resolve('⚠️\u2009' + webResult);
-        } else {
-          resolve('N/A\u2009');
-        }
-      }).catch(error => {
-        resolve('N/A\u2009');
-      });
-    });
-  };
+    let check_result = 'ChatGPT\u2009➟ ';
+    let gptWeb = 'https://chat.openai.com/cdn-cgi/trace';
+    let gptClient = 'https://android.chat.openai.com/cdn-cgi/trace';
 
-  let check_result = 'ChatGPT\u2009➟ ';
-  await inner_check().then(result => {
-    check_result += result;
-  });
+    let webStatus, clientStatus;
 
-  return check_result;
+    try {
+        webStatus = await inner_check(gptWeb);
+        clientStatus = await inner_check(gptClient);
+    } catch (error) {
+        check_result += 'N/A';
+        return check_result;
+    }
+
+    if (webStatus === 'Available' && clientStatus === 'Available') {
+        check_result += '✅\u2009';
+    } else if (webStatus === 'Available' && clientStatus !== 'Available') {
+        check_result += '⚠️\u2009';
+    } else {
+        check_result += '❌\u2009';
+    }
+
+    return check_result;
 }
+
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
