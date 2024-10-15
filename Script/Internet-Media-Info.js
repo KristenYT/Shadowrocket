@@ -116,15 +116,17 @@ async function check_chatgpt() {
     // Step 1: Check the OpenAI compliance cookie requirements
     const check_cookie = () => {
         return new Promise((resolve, reject) => {
+            log("Checking OpenAI compliance cookie requirements...");
             $httpClient.get({
                 url: 'https://api.openai.com/compliance/cookie_requirements',
                 headers: REQUEST_HEADERS,
             }, function(error, response, data) {
                 if (error != null || response.status !== 200) {
+                    log(`Cookie check failed. Error: ${error || response.status}`);
                     reject('Error');
                     return;
                 }
-                // Check if the region is unsupported based on cookie data
+                log(`Cookie check response: ${data}`);
                 const cookieRestricted = data.toLowerCase().includes('unsupported_country');
                 resolve(cookieRestricted);
             });
@@ -134,15 +136,17 @@ async function check_chatgpt() {
     // Step 2: Check for VPN restrictions on the client side
     const check_vpn = () => {
         return new Promise((resolve, reject) => {
+            log("Checking for VPN restrictions...");
             $httpClient.get({
                 url: 'https://ios.chat.openai.com/',
                 headers: REQUEST_HEADERS,
             }, function(error, response, data) {
                 if (error != null || response.status !== 200) {
+                    log(`VPN check failed. Error: ${error || response.status}`);
                     reject('Error');
                     return;
                 }
-                // Check if there's a VPN restriction in the response data
+                log(`VPN check response: ${data}`);
                 const vpnRestricted = data.toLowerCase().includes('vpn');
                 resolve(vpnRestricted);
             });
@@ -152,16 +156,18 @@ async function check_chatgpt() {
     // Step 3: Get region information from cdn-cgi trace
     const check_region = () => {
         return new Promise((resolve, reject) => {
+            log("Fetching region information from cdn-cgi trace...");
             let option = {
                 url: 'https://chat.openai.com/cdn-cgi/trace',
                 headers: REQUEST_HEADERS,
             };
             $httpClient.get(option, function(error, response, data) {
                 if (error != null || response.status !== 200) {
+                    log(`Region check failed. Error: ${error || response.status}`);
                     reject('Error');
                     return;
                 }
-                // Parse the trace data and extract the region
+                log(`Region check response: ${data}`);
                 let lines = data.split("\n");
                 let cf = lines.reduce((acc, line) => {
                     let [key, value] = line.split("=");
@@ -169,6 +175,7 @@ async function check_chatgpt() {
                     return acc;
                 }, {});
                 let region = cf.loc;
+                log(`Detected region: ${region}`);
                 resolve(region ? region.toUpperCase() : 'N/A');
             });
         });
@@ -177,7 +184,9 @@ async function check_chatgpt() {
     let result = 'ChatGPT\u2009➟ ';
     
     try {
+        log("Starting ChatGPT check...");
         const [cookieRestricted, vpnRestricted, region] = await Promise.all([check_cookie(), check_vpn(), check_region()]);
+        log(`cookieRestricted: ${cookieRestricted}, vpnRestricted: ${vpnRestricted}, region: ${region}`);
 
         // Logic to determine final status based on the checks
         if (!cookieRestricted && !vpnRestricted) {
@@ -190,11 +199,14 @@ async function check_chatgpt() {
             result += 'N/A';
         }
     } catch (error) {
+        log(`Error during ChatGPT check: ${error}`);
         result += 'N/A';
     }
 
+    log(`Final ChatGPT result: ${result}`);
     return result;
 }
+
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
