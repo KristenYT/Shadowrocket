@@ -194,17 +194,17 @@ async function check_chatgpt() {
         const isCountryUnsupported = cookieResponse.toLowerCase().includes('unsupported_country');
 
         if (isCountryUnsupported || region_code === 'Not Available') {
-            return `ChatGPT ➟ ❌ ${region_code === 'Not Available' ? '該地區不支持' : region_code}`;
+            return `ChatGPT➟ ❌   ;
         }
 
         const isVpnRestricted = vpnResponse.toLowerCase().includes('vpn');
 
-        let check_result = `ChatGPT ➟ `;
-        check_result += !isVpnRestricted ? `✅ ${region_code}` : `⚠️ ${region_code}`;
+        let check_result = `ChatGPT➟ `;
+        check_result += !isVpnRestricted ? `✅\u2009${region_code}` : `⚠️\u2009${region_code}`;
 
         return check_result;
     } catch (error) {
-        return `ChatGPT ➟ N/A `;
+        return `ChatGPT➟  N/A    `;
     }
 }
 
