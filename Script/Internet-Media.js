@@ -134,8 +134,6 @@ async function check_chatgpt() {
                     'sec-ch-ua-platform': '"Windows"',
                     'sec-fetch-dest': 'empty',
                     'sec-fetch-mode': 'cors',
-                    'sec-fetch-site': 'same-site',
-                    'user-agent': ''
                 }
             }, (error, response, data) => {
                 if (error) {
@@ -147,61 +145,51 @@ async function check_chatgpt() {
         });
 
         log("ChatGPT: 已收到 Cookie 请求的响应。");
-        const tmpresult1 = response.toLowerCase().includes('unsupported_country');
+        const isCountryUnsupported = response.toLowerCase().includes('unsupported_country');
         log(`Cookie 请求响应: ${response}`);
 
-        if (!tmpresult1) {
-            const vpnResponse = await new Promise((resolve, reject) => {
-                $httpClient.get({
-                    url: 'https://ios.chat.openai.com/',
-                    headers: {
-                        'authority': 'ios.chat.openai.com',
-                        'accept': '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                        'accept-language': 'en-US,en;q=0.9',
-                        'sec-ch-ua': '',
-                        'sec-ch-ua-mobile': '?0',
-                        'sec-ch-ua-platform': '"Windows"',
-                        'sec-fetch-dest': 'document',
-                        'sec-fetch-mode': 'navigate',
-                        'sec-fetch-site': 'none',
-                        'sec-fetch-user': '?1',
-                        'upgrade-insecure-requests': '1',
-                        'user-agent': ''
-                    }
-                }, (error2, response2, data2) => {
-                    if (error2) {
-                        reject("ChatGPT: 检测失败 (网络连接问题 - VPN 请求)");
-                    } else {
-                        resolve(data2);
-                    }
-                });
-            });
-
-            log("ChatGPT: 已收到 VPN 请求的响应。");
-            const tmpresult2 = vpnResponse.toLowerCase().includes('vpn');
-            log(`VPN 检测响应: ${vpnResponse}`);
-
-            let check_result = "ChatGPT ➟ ";
-            if (!tmpresult1 && !tmpresult2) {
-                check_result += "✅ 服务可用";
-            } else if (tmpresult1 && tmpresult2) {
-                check_result += "❌ 因国家和 VPN 限制而不可用";
-            } else if (!tmpresult1 && tmpresult2) {
-                check_result += "❌ 仅限使用网页浏览器（VPN 限制）";
-            } else if (tmpresult1 && !tmpresult2) {
-                check_result += "❌ 仅限使用移动应用（国家限制）";
-            } else {
-                check_result += "N/A 检测失败（未知错误）";
-            }
-
-            return check_result;
-        } else {
+        if (isCountryUnsupported) {
             return "ChatGPT ➟ ❌ 该服务在您的国家不可用";
         }
+
+        const vpnResponse = await new Promise((resolve, reject) => {
+            $httpClient.get({
+                url: 'https://ios.chat.openai.com/',
+                headers: {
+                    'authority': 'ios.chat.openai.com',
+                    'accept': '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'accept-language': 'en-US,en;q=0.9',
+                    'sec-ch-ua': '',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"',
+                    'sec-fetch-dest': 'document',
+                }
+            }, (error2, response2, data2) => {
+                if (error2) {
+                    reject("ChatGPT: 检测失败 (网络连接问题 - VPN 请求)");
+                } else {
+                    resolve(data2);
+                }
+            });
+        });
+
+        log("ChatGPT: 已收到 VPN 请求的响应。");
+        const isVpnRestricted = vpnResponse.toLowerCase().includes('vpn');
+        log(`VPN 检测响应: ${vpnResponse}`);
+
+        let check_result = "ChatGPT ➟ ";
+        if (!isVpnRestricted) {
+            check_result += "✅ ";
+        } else {
+            check_result += "⚠️ ";
+        }
+
+        return check_result;
     } catch (error) {
         return `ChatGPT ➟ N/A 检测失败（错误: ${error.message}）`;
     }
 }
+
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
