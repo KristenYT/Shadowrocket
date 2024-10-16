@@ -111,13 +111,49 @@ function getArgs() {
 }
 
 
-
 // 檢測 ChatGPT
 async function check_chatgpt() {
     const log = (message) => console.log(message);
 
     // 使用簡單的內存緩存
     const cache = {};
+
+    // 從 CDN 提取地區代碼
+    let getRegionCode = () => {
+        return new Promise((resolve, reject) => {
+            let option = {
+                url: 'http://chat.openai.com/cdn-cgi/trace',
+                headers: REQUEST_HEADERS,
+            };
+
+            // 發起請求
+            $httpClient.get(option, function(error, response, data) {
+                if (error != null || response.status !== 200) {
+                    reject('Error');
+                    return;
+                }
+
+                // 解析回應數據
+                let lines = data.split("\n");
+                let cf = lines.reduce((acc, line) => {
+                    let [key, value] = line.split("=");
+                    acc[key] = value;
+                    return acc;
+                }, {});
+
+                // 提取地區代碼
+                let country_code = cf.loc;
+                let restricted_countries = ['HK', 'RU', 'CN', 'KP', 'CU', 'IR', 'SY'];  // 限制地區
+
+                // 檢測該地區是否受限
+                if (restricted_countries.includes(country_code)) {
+                    resolve('Not Available');
+                } else {
+                    resolve(country_code.toUpperCase());
+                }
+            });
+        });
+    };
 
     async function fetchDataWithTimeout(url, headers, timeout = 5000) { // 默認超時 5 秒
         if (cache[url]) return cache[url];
@@ -126,19 +162,22 @@ async function check_chatgpt() {
             new Promise((resolve, reject) => {
                 $httpClient.get({ url, headers }, (error, response, data) => {
                     if (error) {
-                        reject(`ChatGPT: 检测失败 (网络连接问题 - ${url})`);
+                        reject(`ChatGPT: 檢測失敗 (網絡連接問題 - ${url})`);
                     } else {
                         cache[url] = data;
                         resolve(data);
                     }
                 });
             }),
-            new Promise((_, reject) => setTimeout(() => reject('请求超时'), timeout))
+            new Promise((_, reject) => setTimeout(() => reject('請求超時'), timeout))
         ]);
     }
 
     try {
-        // 假設從 API 返回的響應包含地區信息
+        // 獲取地區代碼
+        const region_code = await getRegionCode();
+
+        // 發送其他 API 請求
         const [cookieResponse, vpnResponse] = await Promise.all([
             fetchDataWithTimeout('https://api.openai.com/compliance/cookie_requirements', {
                 'authority': 'api.openai.com',
@@ -153,16 +192,15 @@ async function check_chatgpt() {
         ]);
 
         const isCountryUnsupported = cookieResponse.toLowerCase().includes('unsupported_country');
-        const region = "地區代碼"; // 假設從API回應提取的地區代碼，如 'US', 'CN', 'JP' 等等
 
-        if (isCountryUnsupported) {
-            return `ChatGPT➟ ❌ `;
+        if (isCountryUnsupported || region_code === 'Not Available') {
+            return `ChatGPT ➟ ❌ ${region_code === 'Not Available' ? '該地區不支持' : region_code}`;
         }
 
         const isVpnRestricted = vpnResponse.toLowerCase().includes('vpn');
 
-        let check_result = `ChatGPT➟ `;
-        check_result += !isVpnRestricted ? `✅ ${region}` : `⚠️ ${region}`;
+        let check_result = `ChatGPT ➟ `;
+        check_result += !isVpnRestricted ? `✅ ${region_code}` : `⚠️ ${region_code}`;
 
         return check_result;
     } catch (error) {
