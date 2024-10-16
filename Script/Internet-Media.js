@@ -138,6 +138,7 @@ async function check_chatgpt() {
     }
 
     try {
+        // 假設從 API 返回的響應包含地區信息
         const [cookieResponse, vpnResponse] = await Promise.all([
             fetchDataWithTimeout('https://api.openai.com/compliance/cookie_requirements', {
                 'authority': 'api.openai.com',
@@ -152,15 +153,16 @@ async function check_chatgpt() {
         ]);
 
         const isCountryUnsupported = cookieResponse.toLowerCase().includes('unsupported_country');
-        
+        const region = "地區代碼"; // 假設從API回應提取的地區代碼，如 'US', 'CN', 'JP' 等等
+
         if (isCountryUnsupported) {
-            return "ChatGPT ➟ ❌ ";
+            return `ChatGPT➟ ❌ `;
         }
 
         const isVpnRestricted = vpnResponse.toLowerCase().includes('vpn');
 
-        let check_result = "ChatGPT ➟ ";
-        check_result += !isVpnRestricted ? "✅ " : "⚠️ ";
+        let check_result = `ChatGPT➟ `;
+        check_result += !isVpnRestricted ? `✅ ${region}` : `⚠️ ${region}`;
 
         return check_result;
     } catch (error) {
