@@ -111,108 +111,97 @@ function getArgs() {
 }
 
 
-// 檢測 ChatGPT
 async function check_chatgpt() {
-    // Step 1: Check the OpenAI compliance cookie requirements
-    const check_cookie = () => {
-        return new Promise((resolve, reject) => {
+    const log = (message) => {
+        console.log(message);  // 输出详细日志到控制台
+    };
+
+    try {
+        // 第一个请求: 检查 cookie requirements
+        const response = await new Promise((resolve, reject) => {
             $httpClient.get({
                 url: 'https://api.openai.com/compliance/cookie_requirements',
-                headers: REQUEST_HEADERS,
-            }, function(error, response, data) {
-                if (error != null || response.status !== 200) {
-                    console.log('Cookie check error: ', error);
-                    console.log('Cookie check response status: ', response ? response.status : 'No response');
-                    reject('Error');
-                    return;
+                headers: {
+                    'authority': 'api.openai.com',
+                    'accept': '*/*',
+                    'accept-language': 'en-US,en;q=0.9',
+                    'authorization': 'Bearer null',
+                    'content-type': 'application/json',
+                    'origin': 'https://platform.openai.com',
+                    'referer': 'https://platform.openai.com/',
+                    'sec-ch-ua': '',
+                    'sec-ch-ua-mobile': '?0',
+                    'sec-ch-ua-platform': '"Windows"',
+                    'sec-fetch-dest': 'empty',
+                    'sec-fetch-mode': 'cors',
+                    'sec-fetch-site': 'same-site',
+                    'user-agent': ''
                 }
-                console.log('Cookie check data: ', data);
-                // Check if the region is unsupported based on cookie data
-                const cookieRestricted = data.toLowerCase().includes('unsupported_country');
-                resolve(cookieRestricted);
+            }, (error, response, data) => {
+                if (error) {
+                    reject("ChatGPT: 检测失败 (网络连接问题 - Cookie 请求)");
+                } else {
+                    resolve(data);
+                }
             });
         });
-    };
 
-    // Step 2: Check for VPN restrictions on the client side
-    const check_vpn = () => {
-        return new Promise((resolve, reject) => {
-            $httpClient.get({
-                url: 'https://ios.chat.openai.com/',
-                headers: REQUEST_HEADERS,
-            }, function(error, response, data) {
-                if (response.status === 403) {
-                    console.log('VPN check blocked with 403 status');
-                    resolve(true);  // Assume VPN is restricted if 403
-                    return;
-                }
-                if (error != null || response.status !== 200) {
-                    console.log('VPN check error: ', error);
-                    console.log('VPN check response status: ', response ? response.status : 'No response');
-                    reject('Error');
-                    return;
-                }
-                console.log('VPN check data: ', data);
-                // Check if VPN restriction exists in the data
-                const vpnRestricted = data.toLowerCase().includes('vpn');
-                resolve(vpnRestricted);
+        log("ChatGPT: 已收到 Cookie 请求的响应。");
+        const tmpresult1 = response.toLowerCase().includes('unsupported_country');
+        log(`Cookie 请求响应: ${response}`);
+
+        if (!tmpresult1) {
+            const vpnResponse = await new Promise((resolve, reject) => {
+                $httpClient.get({
+                    url: 'https://ios.chat.openai.com/',
+                    headers: {
+                        'authority': 'ios.chat.openai.com',
+                        'accept': '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                        'accept-language': 'en-US,en;q=0.9',
+                        'sec-ch-ua': '',
+                        'sec-ch-ua-mobile': '?0',
+                        'sec-ch-ua-platform': '"Windows"',
+                        'sec-fetch-dest': 'document',
+                        'sec-fetch-mode': 'navigate',
+                        'sec-fetch-site': 'none',
+                        'sec-fetch-user': '?1',
+                        'upgrade-insecure-requests': '1',
+                        'user-agent': ''
+                    }
+                }, (error2, response2, data2) => {
+                    if (error2) {
+                        reject("ChatGPT: 检测失败 (网络连接问题 - VPN 请求)");
+                    } else {
+                        resolve(data2);
+                    }
+                });
             });
-        });
-    };
 
-    // Step 3: Get region information from cdn-cgi trace
-    const check_region = () => {
-        return new Promise((resolve, reject) => {
-            let option = {
-                url: 'https://chat.openai.com/cdn-cgi/trace',
-                headers: REQUEST_HEADERS,
-            };
-            $httpClient.get(option, function(error, response, data) {
-                if (error != null || response.status !== 200) {
-                    console.log('Region check error: ', error);
-                    console.log('Region check response status: ', response ? response.status : 'No response');
-                    reject('Error');
-                    return;
-                }
-                console.log('Region check data: ', data);
-                // Parse the trace data and extract the region
-                let lines = data.split("\n");
-                let cf = lines.reduce((acc, line) => {
-                    let [key, value] = line.split("=");
-                    acc[key] = value;
-                    return acc;
-                }, {});
-                let region = cf.loc;
-                resolve(region ? region.toUpperCase() : 'N/A');
-            });
-        });
-    };
+            log("ChatGPT: 已收到 VPN 请求的响应。");
+            const tmpresult2 = vpnResponse.toLowerCase().includes('vpn');
+            log(`VPN 检测响应: ${vpnResponse}`);
 
-    let result = 'ChatGPT\u2009➟ ';
-    
-    try {
-        const [cookieRestricted, vpnRestricted, region] = await Promise.all([check_cookie(), check_vpn(), check_region()]);
+            let check_result = "ChatGPT ➟ ";
+            if (!tmpresult1 && !tmpresult2) {
+                check_result += "✅ 服务可用";
+            } else if (tmpresult1 && tmpresult2) {
+                check_result += "❌ 因国家和 VPN 限制而不可用";
+            } else if (!tmpresult1 && tmpresult2) {
+                check_result += "❌ 仅限使用网页浏览器（VPN 限制）";
+            } else if (tmpresult1 && !tmpresult2) {
+                check_result += "❌ 仅限使用移动应用（国家限制）";
+            } else {
+                check_result += "N/A 检测失败（未知错误）";
+            }
 
-        // Logic to determine final status based on the checks
-        if (!cookieRestricted && !vpnRestricted) {
-            result += `✅\u2009${region}`;
-        } else if (!cookieRestricted && vpnRestricted) {
-            result += `⚠️\u2009${region}`;
-        } else if (cookieRestricted) {
-            result += '❌';
+            return check_result;
         } else {
-            result += 'N/A';
+            return "ChatGPT ➟ ❌ 该服务在您的国家不可用";
         }
     } catch (error) {
-        console.log('Final error: ', error);
-        result += 'N/A';
+        return `ChatGPT ➟ N/A 检测失败（错误: ${error.message}）`;
     }
-
-    console.log('Final ChatGPT result: ', result);
-    return result;
 }
-
-
 
 // 檢測 YouTube Premium
 async function check_youtube_premium() {
