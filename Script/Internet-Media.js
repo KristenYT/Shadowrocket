@@ -112,57 +112,50 @@ function getArgs() {
 
 
 async function check_chatgpt() {
-    const log = (message) => {
-        console.log(message);  // 输出详细日志到控制台
-    };
+    const log = (message) => console.log(message);
+
+    // 使用簡單的內存緩存
+    const cache = {};
+
+    async function fetchData(url, headers) {
+        if (cache[url]) return cache[url];
+
+        return new Promise((resolve, reject) => {
+            $httpClient.get({ url, headers }, (error, response, data) => {
+                if (error) {
+                    reject(`ChatGPT: 检测失败 (网络连接问题 - ${url})`);
+                } else {
+                    cache[url] = data;
+                    resolve(data);
+                }
+            });
+        });
+    }
 
     try {
-        // 並行發送兩個請求
         const [cookieResponse, vpnResponse] = await Promise.all([
-            new Promise((resolve, reject) => {
-                $httpClient.get({
-                    url: 'https://api.openai.com/compliance/cookie_requirements',
-                    headers: {
-                        'authority': 'api.openai.com',
-                        'accept': '*/*',
-                        'accept-language': 'en-US,en;q=0.9',
-                        'authorization': 'Bearer null',
-                        'content-type': 'application/json',
-                        'origin': 'https://platform.openai.com',
-                        'referer': 'https://platform.openai.com/',
-                        'sec-ch-ua': '',
-                        'sec-ch-ua-mobile': '?0',
-                        'sec-ch-ua-platform': '"Windows"',
-                        'sec-fetch-dest': 'empty',
-                        'sec-fetch-mode': 'cors',
-                    }
-                }, (error, response, data) => {
-                    if (error) {
-                        reject("ChatGPT: 检测失败 (网络连接问题 - Cookie 请求)");
-                    } else {
-                        resolve(data);
-                    }
-                });
+            fetchData('https://api.openai.com/compliance/cookie_requirements', {
+                'authority': 'api.openai.com',
+                'accept': '*/*',
+                'accept-language': 'en-US,en;q=0.9',
+                'authorization': 'Bearer null',
+                'content-type': 'application/json',
+                'origin': 'https://platform.openai.com',
+                'referer': 'https://platform.openai.com/',
+                'sec-ch-ua': '',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'sec-fetch-dest': 'empty',
+                'sec-fetch-mode': 'cors',
             }),
-            new Promise((resolve, reject) => {
-                $httpClient.get({
-                    url: 'https://ios.chat.openai.com/',
-                    headers: {
-                        'authority': 'ios.chat.openai.com',
-                        'accept': '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                        'accept-language': 'en-US,en;q=0.9',
-                        'sec-ch-ua': '',
-                        'sec-ch-ua-mobile': '?0',
-                        'sec-ch-ua-platform': '"Windows"',
-                        'sec-fetch-dest': 'document',
-                    }
-                }, (error2, response2, data2) => {
-                    if (error2) {
-                        reject("ChatGPT: 检测失败 (网络连接问题 - VPN 请求)");
-                    } else {
-                        resolve(data2);
-                    }
-                });
+            fetchData('https://ios.chat.openai.com/', {
+                'authority': 'ios.chat.openai.com',
+                'accept': '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'accept-language': 'en-US,en;q=0.9',
+                'sec-ch-ua': '',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'sec-fetch-dest': 'document',
             })
         ]);
 
@@ -172,13 +165,13 @@ async function check_chatgpt() {
         log(`Cookie 请求响应: ${cookieResponse}`);
         
         if (isCountryUnsupported) {
-            return "ChatGPT ➟ ❌ 该服务在您的国家不可用";
+            return "ChatGPT➟ ❌ ";
         }
 
         const isVpnRestricted = vpnResponse.toLowerCase().includes('vpn');
         log(`VPN 检测响应: ${vpnResponse}`);
 
-        let check_result = "ChatGPT ➟ ";
+        let check_result = "ChatGPT➟ ";
         check_result += !isVpnRestricted ? "✅ " : "⚠️ ";
 
         return check_result;
