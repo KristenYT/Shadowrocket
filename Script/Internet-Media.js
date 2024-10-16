@@ -111,7 +111,7 @@ function getArgs() {
 }
 
 
-    // 檢測 ChatGPT
+// 檢測 ChatGPT
 async function check_chatgpt() {
     // Step 1: Check the OpenAI compliance cookie requirements
     const check_cookie = () => {
@@ -141,6 +141,11 @@ async function check_chatgpt() {
                 url: 'https://ios.chat.openai.com/',
                 headers: REQUEST_HEADERS,
             }, function(error, response, data) {
+                if (response.status === 403) {
+                    console.log('VPN check blocked with 403 status');
+                    resolve(true);  // Assume VPN is restricted if 403
+                    return;
+                }
                 if (error != null || response.status !== 200) {
                     console.log('VPN check error: ', error);
                     console.log('VPN check response status: ', response ? response.status : 'No response');
@@ -148,7 +153,7 @@ async function check_chatgpt() {
                     return;
                 }
                 console.log('VPN check data: ', data);
-                // Check if there's a VPN restriction in the response data
+                // Check if VPN restriction exists in the data
                 const vpnRestricted = data.toLowerCase().includes('vpn');
                 resolve(vpnRestricted);
             });
