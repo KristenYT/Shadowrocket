@@ -137,41 +137,24 @@ async function check_chatgpt() {
             fetchData('https://api.openai.com/compliance/cookie_requirements', {
                 'authority': 'api.openai.com',
                 'accept': '*/*',
-                'accept-language': 'en-US,en;q=0.9',
                 'authorization': 'Bearer null',
                 'content-type': 'application/json',
-                'origin': 'https://platform.openai.com',
-                'referer': 'https://platform.openai.com/',
-                'sec-ch-ua': '',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
             }),
             fetchData('https://ios.chat.openai.com/', {
                 'authority': 'ios.chat.openai.com',
                 'accept': '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                'accept-language': 'en-US,en;q=0.9',
-                'sec-ch-ua': '',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"Windows"',
-                'sec-fetch-dest': 'document',
             })
         ]);
 
-        log("ChatGPT: 已收到 Cookie 和 VPN 请求的响应。");
-
         const isCountryUnsupported = cookieResponse.toLowerCase().includes('unsupported_country');
-        log(`Cookie 请求响应: ${cookieResponse}`);
         
         if (isCountryUnsupported) {
-            return "ChatGPT➟ ❌ ";
+            return "ChatGPT ➟ ❌ 该服务在您的国家不可用";
         }
 
         const isVpnRestricted = vpnResponse.toLowerCase().includes('vpn');
-        log(`VPN 检测响应: ${vpnResponse}`);
 
-        let check_result = "ChatGPT➟ ";
+        let check_result = "ChatGPT ➟ ";
         check_result += !isVpnRestricted ? "✅ " : "⚠️ ";
 
         return check_result;
