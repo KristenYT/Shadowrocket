@@ -110,7 +110,8 @@ function getArgs() {
     );
 }
 
-// 檢測 ChatGPT
+
+    // 檢測 ChatGPT
 async function check_chatgpt() {
     // Step 1: Check the OpenAI compliance cookie requirements
     const check_cookie = () => {
@@ -120,9 +121,12 @@ async function check_chatgpt() {
                 headers: REQUEST_HEADERS,
             }, function(error, response, data) {
                 if (error != null || response.status !== 200) {
+                    console.log('Cookie check error: ', error);
+                    console.log('Cookie check response status: ', response ? response.status : 'No response');
                     reject('Error');
                     return;
                 }
+                console.log('Cookie check data: ', data);
                 // Check if the region is unsupported based on cookie data
                 const cookieRestricted = data.toLowerCase().includes('unsupported_country');
                 resolve(cookieRestricted);
@@ -138,9 +142,12 @@ async function check_chatgpt() {
                 headers: REQUEST_HEADERS,
             }, function(error, response, data) {
                 if (error != null || response.status !== 200) {
+                    console.log('VPN check error: ', error);
+                    console.log('VPN check response status: ', response ? response.status : 'No response');
                     reject('Error');
                     return;
                 }
+                console.log('VPN check data: ', data);
                 // Check if there's a VPN restriction in the response data
                 const vpnRestricted = data.toLowerCase().includes('vpn');
                 resolve(vpnRestricted);
@@ -157,9 +164,12 @@ async function check_chatgpt() {
             };
             $httpClient.get(option, function(error, response, data) {
                 if (error != null || response.status !== 200) {
+                    console.log('Region check error: ', error);
+                    console.log('Region check response status: ', response ? response.status : 'No response');
                     reject('Error');
                     return;
                 }
+                console.log('Region check data: ', data);
                 // Parse the trace data and extract the region
                 let lines = data.split("\n");
                 let cf = lines.reduce((acc, line) => {
@@ -189,11 +199,14 @@ async function check_chatgpt() {
             result += 'N/A';
         }
     } catch (error) {
+        console.log('Final error: ', error);
         result += 'N/A';
     }
 
+    console.log('Final ChatGPT result: ', result);
     return result;
 }
+
 
 
 // 檢測 YouTube Premium
