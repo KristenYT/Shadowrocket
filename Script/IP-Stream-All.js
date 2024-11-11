@@ -81,15 +81,15 @@ await Promise.all([check_chatgpt(), check_youtube_premium(), check_netflix()]) /
 // 幫助函數，用於處理每個服務的解鎖狀態
 function getServiceStatus(status, region, serviceName) {
     if (status == STATUS_COMING) { // 如果狀態是即將到來
-        return `${serviceName} ➟ 🔜\u2009${region}`; // 返回即將可用的服務狀態
+        return `${serviceName} ➟\u2009🔜\u2009${region}`; // 返回即將可用的服務狀態
     } else if (status == STATUS_AVAILABLE) { // 如果狀態是可用
-        return `${serviceName} ➟ ✅\u2009${region}`; // 返回可用的服務狀態
+        return `${serviceName} ➟\u2009✅\u2009${region}`; // 返回可用的服務狀態
     } else if (status == STATUS_NOT_AVAILABLE) { // 如果狀態是不可用
-        return `${serviceName} ➟ ❌`; // 返回不可用的服務狀態
+        return `${serviceName} ➟\u2009❌`; // 返回不可用的服務狀態
     } else if (status == STATUS_TIMEOUT) { // 如果狀態是超時
-        return `${serviceName} ➟ N/A`; // 返回超時的服務狀態
+        return `${serviceName} ➟\u2009N/A`; // 返回超時的服務狀態
     } else {
-        return `${serviceName} ➟ N/A`; // 返回未知狀態的服務狀態
+        return `${serviceName} ➟\u2009N/A`; // 返回未知狀態的服務狀態
     }
 }
 
