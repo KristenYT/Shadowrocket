@@ -209,7 +209,7 @@ async function check_chatgpt() {
         }
     } catch (error) {
         console.log("Error:", error);
-        check_result += ' N/A   '; // 發生錯誤，返回 N/A
+        check_result += ' N/A    \u2009'; // 發生錯誤，返回 N/A
     }
 
     return check_result; // 返回檢查結果
